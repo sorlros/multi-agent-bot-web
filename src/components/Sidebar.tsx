@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Plus, Settings, X } from 'lucide-react';
+import { MessageSquare, Plus, Settings, X, Trash2 } from 'lucide-react';
 
 export interface TaskItem {
   id: string;
@@ -14,9 +14,10 @@ interface SidebarProps {
   activeTaskId?: string | null;
   isOpen: boolean;
   onClose: () => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ tasks, onNewTask, onSelectTask, onOpenSettings, activeTaskId, isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ tasks, onNewTask, onSelectTask, onOpenSettings, activeTaskId, isOpen, onClose, onDeleteTask }) => {
   return (
     <>
       {/* Mobile Backdrop */}
@@ -66,7 +67,19 @@ const Sidebar: React.FC<SidebarProps> = ({ tasks, onNewTask, onSelectTask, onOpe
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors group ${activeTaskId === task.id ? 'bg-[#2a2d3d] text-white' : 'text-slate-300 hover:bg-[#202336]'}`}
             >
               <MessageSquare className={`w-4 h-4 flex-shrink-0 ${activeTaskId === task.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-blue-400'}`} />
-              <span className="truncate">{task.title}</span>
+              <span className="truncate flex-1">{task.title}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm('이 작업을 삭제하시겠습니까?')) {
+                    onDeleteTask(task.id);
+                  }
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                title="작업 삭제"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </button>
           ))}
         </nav>

@@ -98,6 +98,25 @@ function App() {
     setIsMobileSidebarOpen(false); // Close sidebar on mobile after new task
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+      
+      if (error) throw error;
+
+      // Update local state
+      setTasks(tasks.filter(t => t.id !== taskId));
+
+      // If the deleted task was the active one, reset the chat
+      if (activeTaskId === taskId) {
+        handleNewTask();
+      }
+    } catch (error: any) {
+      console.error('Error deleting task:', error);
+      alert('작업 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <>
       <Layout 
@@ -111,6 +130,7 @@ function App() {
             activeTaskId={activeTaskId} 
             isOpen={isMobileSidebarOpen}
             onClose={() => setIsMobileSidebarOpen(false)}
+            onDeleteTask={handleDeleteTask}
           />
         }
       >
