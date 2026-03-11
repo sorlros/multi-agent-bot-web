@@ -1,9 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 from app.services.orchestrator.graph import build_graph
+import os
 
 router = APIRouter(prefix="/orchestration", tags=["Orchestration"])
+
+async def verify_api_key(x_api_secret: str = Header(None)):
+    """Middleware to verify the secret key matching between frontend and backend."""
+    expected_secret = os.environ.get("API_SECRET_KEY")
+    # If a secret is defined in backend but not provided or mismatched in header, block request
+    if expected_secret and x_api_secret != expected_secret:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid AgentWebClient Secret Key")
+    return x_api_secret
 
 class OrchestrationRequest(BaseModel):
     message: str
@@ -15,7 +24,7 @@ class OrchestrationRequest(BaseModel):
 # Create graph singleton
 graph = build_graph()
 
-@router.post("/run")
+@router.post("/run", dependencies=[Depends(verify_api_key)])
 async def run_orchestrator(request: OrchestrationRequest):
     """
     Trigger the autonomous multi-agent pipeline from user prompt.

@@ -9,11 +9,16 @@ app = FastAPI(title="Orbit Agent API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow frontend origin
+    # allow_origins=["*"],  <-- 지우거나 주석 처리
+    allow_origins=[
+        "http://localhost:5174",            # 내 맥북 테스트용
+        "https://내-프로젝트-이름.vercel.app"  # 🚨 허락된 회원님의 Vercel 도메인만!
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 def read_root():
