@@ -8,6 +8,9 @@ router = APIRouter(prefix="/orchestration", tags=["Orchestration"])
 class OrchestrationRequest(BaseModel):
     message: str
     workspace_name: str = "NovelAIne"
+    provider: str = "openrouter"
+    model: str = "google/gemini-2.5-flash"
+    temperature: float = 0.7
 
 # Create graph singleton
 graph = build_graph()
@@ -23,7 +26,10 @@ async def run_orchestrator(request: OrchestrationRequest):
     initial_state = {
         "messages": [HumanMessage(content=request.message)],
         "sender": "user",
-        "current_task": "Initialize task"
+        "current_task": "Initialize task",
+        "provider": request.provider,
+        "model": request.model,
+        "temperature": request.temperature
     }
     
     # Run the graph until END

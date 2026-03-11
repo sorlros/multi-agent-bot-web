@@ -47,13 +47,19 @@ function App() {
     }
 
     try {
-      const { data: settings } = await supabase.from('user_settings').select('workspace_name').limit(1).maybeSingle();
+      const { data: settings } = await supabase.from('user_settings').select('workspace_name, provider, model, temperature').limit(1).maybeSingle();
       const workspace_name = settings?.workspace_name || 'NovelAIne';
+      const provider = settings?.provider || 'openrouter';
+      const model = settings?.model || 'gemini-2.5-flash';
+      const temperature = settings?.temperature || 0.7;
 
       const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
       const response = await axios.post(`${apiUrl}/api/orchestration/run`, {
         message: userText,
-        workspace_name: workspace_name
+        workspace_name: workspace_name,
+        provider: provider,
+        model: model,
+        temperature: temperature
       });
 
       const responseText = (response.data && response.data.success) ? response.data.result : "작업 진행 중 에러가 발생했습니다.";
