@@ -75,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ tasks, onNewTask, onSelectTask, onOpe
                     onDeleteTask(task.id);
                   }
                 }}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1 rounded-md text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
                 title="작업 삭제"
               >
                 <Trash2 className="w-3.5 h-3.5" />
