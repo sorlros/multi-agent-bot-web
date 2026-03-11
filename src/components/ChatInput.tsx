@@ -24,14 +24,14 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
   };
 
   return (
-    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#0f111a] via-[#0f111a] to-transparent pt-12 pb-6 px-4">
+    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#0f111a] via-[#0f111a] to-transparent pt-12 pb-4 sm:pb-6 px-2 sm:px-4">
       <div className="max-w-4xl mx-auto relative group">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="오늘 에이전트가 어떤 작업을 수행할까요? (예: 반응형 로그인 폼 만들어줘...)"
-          className="w-full bg-[#1e2130]/90 border border-[#2f334d] text-slate-200 rounded-2xl py-4 pl-12 pr-14 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none overflow-hidden placeholder:text-slate-500 shadow-xl backdrop-blur-md transition-all h-14"
+          placeholder="오늘 에이전트가 어떤 작업을 수행할까요?"
+          className="w-full bg-[#1e2130]/90 border border-[#2f334d] text-slate-200 rounded-2xl py-3 sm:py-4 pl-10 sm:pl-12 pr-12 sm:pr-14 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none overflow-hidden placeholder:text-slate-500 shadow-xl backdrop-blur-md transition-all h-12 sm:h-14 text-sm sm:text-base"
           rows={1}
           disabled={isLoading}
         />

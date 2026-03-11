@@ -23,7 +23,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ data }) => {
         {isUser ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-white" />}
       </div>
 
-      <div className={`max-w-[85%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`max-w-[95%] sm:max-w-[85%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
         <span className="text-xs font-semibold text-slate-400 mb-1.5 px-1 tracking-wide">
           {isUser ? '나' : '오빗 에이전트'}
         </span>

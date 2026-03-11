@@ -14,6 +14,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -82,6 +83,7 @@ function App() {
 
   const handleSelectTask = async (taskId: string) => {
     setActiveTaskId(taskId);
+    setIsMobileSidebarOpen(false); // Close sidebar on mobile after selection
     setIsLoading(true);
     const { data } = await supabase.from('messages').select('*').eq('task_id', taskId).order('created_at', { ascending: true });
     if (data) {
@@ -93,11 +95,13 @@ function App() {
   const handleNewTask = () => {
     setActiveTaskId(null);
     setMessages([]);
+    setIsMobileSidebarOpen(false); // Close sidebar on mobile after new task
   };
 
   return (
     <>
       <Layout 
+        onOpenSidebar={() => setIsMobileSidebarOpen(true)}
         sidebar={
           <Sidebar 
             tasks={tasks}
@@ -105,6 +109,8 @@ function App() {
             onSelectTask={handleSelectTask} 
             onOpenSettings={() => setIsSettingsOpen(true)}
             activeTaskId={activeTaskId} 
+            isOpen={isMobileSidebarOpen}
+            onClose={() => setIsMobileSidebarOpen(false)}
           />
         }
       >

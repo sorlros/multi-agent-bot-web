@@ -16,8 +16,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading }) => {
   }, [messages, isLoading]);
 
   return (
-    <div className="flex-1 overflow-y-auto w-full px-4 py-6 custom-scrollbar" ref={scrollRef}>
-      <div className="max-w-4xl mx-auto space-y-8 pb-32">
+    <div className="flex-1 overflow-y-auto w-full px-2 sm:px-4 py-4 sm:py-6 custom-scrollbar" ref={scrollRef}>
+      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 pb-32">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center mt-32 text-center opacity-60">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 p-1 mb-6 shadow-2xl">

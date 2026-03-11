@@ -97,7 +97,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-2xl bg-[#151724] border border-[#2f334d] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-[90%] md:w-full max-w-2xl max-h-[90vh] flex flex-col bg-[#151724] border border-[#2f334d] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2f334d] bg-[#1a1c29]">
@@ -114,31 +114,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Body */}
-        <div className="flex h-[500px]">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0 md:h-[500px]">
           {/* Sidebar Tabs */}
-          <div className="w-48 bg-[#1a1c29]/50 border-r border-[#2f334d] p-3 space-y-1">
+          <div className="w-full md:w-48 bg-[#1a1c29]/50 border-b md:border-b-0 md:border-r border-[#2f334d] p-3 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible shrink-0 custom-scrollbar">
             <button 
               onClick={() => setActiveTab('model')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'model' ? 'bg-blue-600/10 text-blue-400' : 'text-slate-400 hover:bg-[#202336] hover:text-slate-200'}`}
+              className={`flex-1 md:w-full flex justify-center md:justify-start items-center gap-2 md:gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${activeTab === 'model' ? 'bg-blue-600/10 text-blue-400' : 'text-slate-400 hover:bg-[#202336] hover:text-slate-200'}`}
             >
-              <Cpu className="w-4 h-4" /> AI 모델 설정
+              <Cpu className="w-4 h-4" /> <span className="hidden sm:inline md:inline">AI 모델 설정</span><span className="sm:hidden">모델</span>
             </button>
             <button 
               onClick={() => setActiveTab('keys')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'keys' ? 'bg-blue-600/10 text-blue-400' : 'text-slate-400 hover:bg-[#202336] hover:text-slate-200'}`}
+              className={`flex-1 md:w-full flex justify-center md:justify-start items-center gap-2 md:gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${activeTab === 'keys' ? 'bg-blue-600/10 text-blue-400' : 'text-slate-400 hover:bg-[#202336] hover:text-slate-200'}`}
             >
-              <Key className="w-4 h-4" /> API 인증키 
+              <Key className="w-4 h-4" /> <span className="hidden sm:inline md:inline">API 인증키</span><span className="sm:hidden">키</span>
             </button>
             <button 
               onClick={() => setActiveTab('workspace')}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'workspace' ? 'bg-blue-600/10 text-blue-400' : 'text-slate-400 hover:bg-[#202336] hover:text-slate-200'}`}
+              className={`flex-1 md:w-full flex justify-center md:justify-start items-center gap-2 md:gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${activeTab === 'workspace' ? 'bg-blue-600/10 text-blue-400' : 'text-slate-400 hover:bg-[#202336] hover:text-slate-200'}`}
             >
-              <Folder className="w-4 h-4" /> 작업 환경
+              <Folder className="w-4 h-4" /> <span className="hidden sm:inline md:inline">작업 환경</span><span className="sm:hidden">작업실</span>
             </button>
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar">
             
             {activeTab === 'model' && (
               <div className="space-y-6 animate-in fade-in duration-300">
@@ -194,7 +194,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 <div>
                   <h3 className="text-sm font-semibold text-slate-200 mb-4">에이전트 행동 제어</h3>
                   <label className="flex items-start gap-3 cursor-pointer group">
-                    <div className="relative flex items-center justify-center mt-0.5">
+                    <div className="relative flex items-center justify-center mt-0.5 shrink-0">
                       <input 
                         type="checkbox" 
                         className="sr-only peer" 
@@ -206,7 +206,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">완전 자율 모드 (YOLO Mode)</p>
-                      <p className="text-xs text-slate-500 mt-1">에이전트가 터미널 명령어 등 위험 행동 수행 시 승인 없이 끝까지 작업을 완수합니다.</p>
+                      <p className="text-xs text-slate-500 mt-1">에이전트가 위험 행동 수행 시 승인 없이 끝까지 작업을 완수합니다.</p>
                     </div>
                   </label>
                 </div>
@@ -218,7 +218,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 <h3 className="text-sm font-semibold text-slate-200 mb-4">API 인증키 관리</h3>
                 <div className="bg-[#202336] rounded-lg p-4 border border-[#2f334d]">
                   <p className="text-sm text-slate-400 leading-relaxed">
-                    **보안 알림:** 현재 API 인증키는 브라우저 DB가 아닌 <strong>에이전트 백엔드(.env 파일)</strong>에서 관리되고 있습니다.<br/><br/>클라이언트 측 노출을 시키지 않기 위해 UI를 통한 변경은 비활성화 되어있습니다.
+                    **보안 알림:** 현재 API 인증키는 <strong>에이전트 백엔드(.env 파일)</strong>에서 관리되고 있습니다.<br/><br/>클라이언트 측 노출을 시키지 않기 위해 UI 변경은 비활성화 되어있습니다.
                   </p>
                 </div>
               </div>
@@ -228,20 +228,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               <div className="space-y-6 animate-in fade-in duration-300">
                 <h3 className="text-sm font-semibold text-slate-200 mb-4">작업 환경 (Workspace Binding)</h3>
                 <div className="space-y-3">
-                  <label className="text-xs font-medium text-slate-400">타겟 프로젝트 이름 (Target Project Folder)</label>
-                  <div className="flex items-center gap-0 bg-[#0f111a] border border-[#2f334d] rounded-lg focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden p-2">
-                    <span className="text-slate-500 font-mono text-sm px-2 bg-[#1a1c29] py-1 rounded-md border border-[#2f334d]">/Users/choi/Desktop/workspace/</span>
+                  <label className="text-xs font-medium text-slate-400">타겟 프로젝트 이름 (Folder)</label>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-0 bg-[#0f111a] border border-[#2f334d] rounded-lg focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden p-2">
+                    <span className="text-slate-500 font-mono text-xs sm:text-sm px-2 bg-[#1a1c29] py-2 sm:py-1 rounded-md sm:rounded-r-none border sm:border-r-0 border-[#2f334d] shrink-0 truncate max-w-[200px] sm:max-w-none">/Users/choi/Desktop/workspace/</span>
                     <input 
                       type="text" 
-                      className="flex-1 bg-transparent text-slate-200 text-sm focus:outline-none placeholder:text-slate-600 font-mono px-3 py-1"
+                      className="flex-1 bg-transparent text-slate-200 text-sm focus:outline-none placeholder:text-slate-600 font-mono px-3 py-2 sm:py-1"
                       placeholder="NovelAIne"
                       value={workspaceName}
                       onChange={(e) => setWorkspaceName(e.target.value)}
                     />
                   </div>
                   <p className="text-[11px] text-slate-500 mt-2">
-                    백엔드 에이전트가 코드를 읽고 쓸 실제 프로젝트 폴더명입니다. (예: <code>NovelAIne</code>, <code>AgentWebClient</code>)<br/>
-                    변경 후 새 작업을 지시하면 에이전트가 즉각 해당 폴더로 진입합니다.
+                    백엔드 에이전트가 코드를 읽고 쓸 실제 프로젝트 폴더명입니다.
                   </p>
                 </div>
               </div>
