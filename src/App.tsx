@@ -47,9 +47,13 @@ function App() {
     }
 
     try {
+      const { data: settings } = await supabase.from('user_settings').select('workspace_name').limit(1).maybeSingle();
+      const workspace_name = settings?.workspace_name || 'NovelAIne';
+
       const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
       const response = await axios.post(`${apiUrl}/api/orchestration/run`, {
-        message: userText
+        message: userText,
+        workspace_name: workspace_name
       });
 
       const responseText = (response.data && response.data.success) ? response.data.result : "작업 진행 중 에러가 발생했습니다.";

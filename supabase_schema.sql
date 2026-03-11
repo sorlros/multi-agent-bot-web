@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
     model TEXT DEFAULT 'gemini-2.5-flash',
     temperature NUMERIC(2,1) DEFAULT 0.7,
     is_yolo_mode BOOLEAN DEFAULT true,
+    workspace_name TEXT DEFAULT 'NovelAIne',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
