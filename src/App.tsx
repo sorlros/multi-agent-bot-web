@@ -42,9 +42,7 @@ function App() {
     setMessages(newMessages);
     setIsLoading(true);
 
-    if (currentTaskId) {
-      await supabase.from('messages').insert([{ task_id: currentTaskId, role: 'user', content: userText }]);
-    }
+
 
     try {
       const { data: settings } = await supabase.from('user_settings').select('workspace_name, provider, model, temperature').limit(1).maybeSingle();
@@ -72,9 +70,7 @@ function App() {
       const responseText = (response.data && response.data.success) ? response.data.result : "작업 진행 중 에러가 발생했습니다.";
       
       setMessages([...newMessages, { role: 'agent', content: responseText }]);
-      if (currentTaskId) {
-        await supabase.from('messages').insert([{ task_id: currentTaskId, role: 'agent', content: responseText }]);
-      }
+
     } catch (error: any) {
       console.error(error);
       const errMsg = error.response?.data?.detail || error.message || "오케스트레이션 서버와 통신할 수 없습니다.";
