@@ -42,18 +42,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({ messages, isLoading }) => {
               기획부터 구현, 테스트까지 자동으로 협력하여 완료합니다.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full px-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full px-2 sm:px-4">
               {AGENT_ROLES.map((role, idx) => (
                 <div 
                   key={idx}
-                  className="glass-panel p-5 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all hover:bg-white/[0.03] group text-left animate-in fade-in slide-in-from-bottom-4 duration-500"
+                  className="glass-panel p-3 sm:p-5 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all hover:bg-white/[0.03] group text-left animate-in fade-in slide-in-from-bottom-4 duration-500"
                   style={{ animationDelay: `${idx * 100}ms` }}
                 >
-                  <div className="mb-3 p-2 w-fit rounded-lg bg-white/5 group-hover:bg-blue-500/10 transition-colors">
+                  <div className="mb-2 sm:mb-3 p-1.5 sm:p-2 w-fit rounded-lg bg-white/5 group-hover:bg-blue-500/10 transition-colors">
                     {role.icon}
                   </div>
-                  <h4 className="text-slate-100 font-semibold mb-1 text-sm">{role.name}</h4>
-                  <p className="text-slate-500 text-xs leading-relaxed">{role.desc}</p>
+                  <h4 className="text-slate-100 font-semibold mb-0.5 sm:mb-1 text-[13px] sm:text-sm">{role.name}</h4>
+                  <p className="text-slate-500 text-[10px] sm:text-xs leading-tight sm:leading-relaxed">{role.desc}</p>
                 </div>
               ))}
             </div>
