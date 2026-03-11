@@ -22,6 +22,7 @@ const Layout: React.FC<LayoutProps> = ({ sidebar, children, onOpenSidebar }) => 
             >
               <Menu className="w-6 h-6" />
             </button>
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg" />
             <h1 className="font-bold text-lg tracking-tight">오빗 에이전트</h1>
           </div>
         </header>

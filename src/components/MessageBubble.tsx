@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Bot } from 'lucide-react';
+import { User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -17,10 +17,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ data }) => {
 
   return (
     <div className={`flex gap-4 message-enter ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 ${
-        isUser ? 'bg-blue-600' : 'bg-gradient-to-br from-purple-500 to-indigo-600'
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden ${
+        isUser ? 'bg-blue-600' : 'bg-[#151724] border border-[#2f334d]'
       }`}>
-        {isUser ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-white" />}
+        {isUser ? <User className="w-5 h-5 text-white" /> : <img src="/logo.png" alt="Orbit" className="w-full h-full object-cover" />}
       </div>
 
       <div className={`max-w-[95%] sm:max-w-[85%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>

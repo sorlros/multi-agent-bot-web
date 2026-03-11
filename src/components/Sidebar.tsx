@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, MessageSquare, Plus, Settings, X } from 'lucide-react';
+import { MessageSquare, Plus, Settings, X } from 'lucide-react';
 
 export interface TaskItem {
   id: string;
@@ -35,9 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ tasks, onNewTask, onSelectTask, onOpe
       `}>
         <div className="p-4 pt-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <Bot className="w-6 h-6 text-white" />
-            </div>
+            <img src="/logo.png" alt="Orbit Logo" className="w-8 h-8 rounded-lg" />
             <h1 className="font-bold text-lg tracking-tight">오빗 에이전트</h1>
           </div>
           <button 
