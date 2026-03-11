@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync": "git add . && git commit -m 'chore: auto-sync update' && git push -u origin HEAD"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.0",
