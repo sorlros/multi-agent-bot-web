@@ -58,6 +58,7 @@ function App() {
       
       const response = await axios.post(`${apiUrl}/api/orchestration/run`, {
         message: userText,
+        task_id: currentTaskId,
         workspace_name: workspace_name,
         provider: provider,
         model: model,

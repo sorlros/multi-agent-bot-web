@@ -1,10 +1,17 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
-from langchain_core.messages import HumanMessage
+from typing import Optional
+from langchain_core.messages import HumanMessage, AIMessage
 from app.services.orchestrator.graph import build_graph
+from supabase import create_client, Client
 import os
 
 router = APIRouter(prefix="/orchestration", tags=["Orchestration"])
+
+# Supabase Initialization
+supabase_url = os.environ.get("SUPABASE_URL", "")
+supabase_key = os.environ.get("SUPABASE_KEY", "")
+supabase: Client = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
 
 async def verify_api_key(x_api_secret: str = Header(None)):
     """Middleware to verify the secret key matching between frontend and backend."""
@@ -16,6 +23,7 @@ async def verify_api_key(x_api_secret: str = Header(None)):
 
 class OrchestrationRequest(BaseModel):
     message: str
+    task_id: Optional[str] = None
     workspace_name: str = "NovelAIne"
     provider: str = "openrouter"
     model: str = "google/gemini-2.5-flash"
@@ -32,8 +40,30 @@ async def run_orchestrator(request: OrchestrationRequest):
     """
     from app.services.orchestrator.tools import set_workspace_root
     set_workspace_root(request.workspace_name)
+    
+    # 1. Fetch History from Supabase if task_id exists
+    history_messages = []
+    if request.task_id and supabase:
+        try:
+            # Fetch past messages for this task ordered by time
+            # Limit to last 20 messages to prevent context window explosion
+            response = supabase.table('messages').select('*').eq('task_id', request.task_id).order('created_at', desc=True).limit(20).execute()
+            if response.data:
+                # Reverse to get chronological order [oldest ... newest]
+                past_msgs = reversed(response.data)
+                for msg in past_msgs:
+                    if msg['role'] == 'user':
+                        history_messages.append(HumanMessage(content=msg['content']))
+                    elif msg['role'] == 'agent':
+                        history_messages.append(AIMessage(content=msg['content']))
+        except Exception as e:
+            print(f"Failed to fetch history for task {request.task_id}: {e}")
+            
+    # 2. Append the current user message
+    history_messages.append(HumanMessage(content=request.message))
+    
     initial_state = {
-        "messages": [HumanMessage(content=request.message)],
+        "messages": history_messages,
         "sender": "user",
         "current_task": "Initialize task",
         "provider": request.provider,
