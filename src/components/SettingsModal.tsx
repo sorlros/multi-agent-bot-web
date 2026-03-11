@@ -19,6 +19,38 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [isYoloMode, setIsYoloMode] = useState(true);
   const [workspaceName, setWorkspaceName] = useState('NovelAIne');
 
+  // Provider-Model Mapping
+  const PRVOIDER_MODELS: Record<string, {value: string, label: string}[]> = {
+    openrouter: [
+      { value: 'google/gemini-2.5-flash', label: 'google/gemini-2.5-flash' },
+      { value: 'openai/gpt-4o', label: 'openai/gpt-4o' },
+      { value: 'anthropic/claude-3.5-sonnet', label: 'anthropic/claude-3.5-sonnet' }
+    ],
+    openai: [
+      { value: 'gpt-4o', label: 'gpt-4o' },
+      { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
+      { value: 'gpt-4-turbo', label: 'gpt-4-turbo' }
+    ],
+    google: [
+      { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
+      { value: 'gemini-1.5-pro', label: 'gemini-1.5-pro' }
+    ],
+    anthropic: [
+      { value: 'claude-3-5-sonnet-20240620', label: 'claude-3-5-sonnet' },
+      { value: 'claude-3-opus-20240229', label: 'claude-3-opus' }
+    ]
+  };
+
+  // Handle Provider Change
+  const handleProviderChange = (newProvider: string) => {
+    setProvider(newProvider);
+    // Auto-select the first available model for the new provider
+    const availableModels = PRVOIDER_MODELS[newProvider] || [];
+    if (availableModels.length > 0) {
+      setModel(availableModels[0].value);
+    }
+  };
+
   // Load from Supabase
   useEffect(() => {
     if (isOpen) {
@@ -26,7 +58,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         const { data } = await supabase.from('user_settings').select('*').limit(1).maybeSingle();
         if (data) {
           setProvider(data.provider || 'openrouter');
-          setModel(data.model || 'gemini-2.5-flash');
+          setModel(data.model || 'google/gemini-2.5-flash');
           setTemperature(data.temperature?.toString() || '0.7');
           setIsYoloMode(data.is_yolo_mode !== false);
           setWorkspaceName(data.workspace_name || 'NovelAIne');
@@ -118,7 +150,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       <select 
                         className="w-full bg-[#0f111a] border border-[#2f334d] text-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                         value={provider}
-                        onChange={(e) => setProvider(e.target.value)}
+                        onChange={(e) => handleProviderChange(e.target.value)}
                       >
                         <option value="openrouter">OpenRouter (추천)</option>
                         <option value="openai">OpenAI (직접 연결)</option>
@@ -134,9 +166,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         value={model}
                         onChange={(e) => setModel(e.target.value)}
                       >
-                        <option value="gemini-2.5-flash">google/gemini-2.5-flash</option>
-                        <option value="gpt-4o">openai/gpt-4o</option>
-                        <option value="claude-3-5-sonnet">anthropic/claude-3.5-sonnet</option>
+                        {(PRVOIDER_MODELS[provider] || []).map((m) => (
+                          <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
                       </select>
                     </div>
 
