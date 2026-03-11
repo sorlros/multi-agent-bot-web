@@ -47,7 +47,8 @@ function App() {
     }
 
     try {
-      const response = await axios.post('/api/orchestration/run', {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await axios.post(`${apiUrl}/api/orchestration/run`, {
         message: userText
       });
 
