@@ -9,15 +9,23 @@ interface ChatInputProps {
 const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
   const [input, setInput] = useState('');
 
+  const [isSending, setIsSending] = useState(false);
+
   const handleSend = () => {
-    if (input.trim() && !isLoading) {
+    if (input.trim() && !isLoading && !isSending) {
+      setIsSending(true);
       onSend(input.trim());
       setInput('');
+      // Reset local lock after a short delay or when isLoading prop changes
+      setTimeout(() => setIsSending(false), 500);
     }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      // Prevent triggering during IME composition (essential for Korean)
+      if (e.nativeEvent.isComposing) return;
+      
       e.preventDefault();
       handleSend();
     }
