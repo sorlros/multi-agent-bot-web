@@ -20,6 +20,42 @@ function App() {
     fetchTasks();
   }, []);
 
+  // Supabase Realtime Subscription for Messages
+  useEffect(() => {
+    if (!activeTaskId) return;
+
+    const channel = supabase
+      .channel(`task_messages_${activeTaskId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `task_id=eq.${activeTaskId}`
+        },
+        (payload) => {
+          const newMessage = payload.new;
+          if (newMessage.role === 'agent') {
+            setMessages((prev) => {
+              // Avoid duplicate messages if already manually added
+              const exists = prev.some(m => m.content === newMessage.content && m.role === 'agent');
+              if (!exists) {
+                return [...prev, { role: 'agent', content: newMessage.content }];
+              }
+              return prev;
+            });
+            setIsLoading(false); // Stop loading when agent response arrives
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTaskId]);
+
   const fetchTasks = async () => {
     const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
     if (data) setTasks(data);
@@ -74,13 +110,16 @@ function App() {
       const responseText = (response.data && response.data.success) ? response.data.result : "작업 진행 중 에러가 발생했습니다.";
       
       setMessages([...newMessages, { role: 'agent', content: responseText }]);
+      // NOTE: isLoading is NOT set to false here. 
+      // It will be set to false when the Realtime 'agent' message arrives.
 
     } catch (error: any) {
       console.error(error);
       const errMsg = error.response?.data?.detail || error.message || "오케스트레이션 서버와 통신할 수 없습니다.";
       setMessages([...newMessages, { role: 'agent', content: `🚨 에러: ${errMsg}` }]);
+      setIsLoading(false); // Only stop loading on error
     } finally {
-      setIsLoading(false);
+      // setIsLoading(false); // Removed: Realtime will handle this on success
     }
   };
 
