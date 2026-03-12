@@ -2,15 +2,29 @@ import os
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+THEME_MAPPING = {
+    "quality": {"provider": "openrouter", "model": "anthropic/claude-3.5-sonnet"},
+    "balanced": {"provider": "openrouter", "model": "google/gemini-2.5-pro"},
+    "economy": {"provider": "openrouter", "model": "google/gemini-2.5-flash"},
+}
+
 def get_llm(state: dict):
     """
     Initialize LLM dynamically based on the state payload from the frontend.
     Supports direct OpenAI, direct Google, or fallback to OpenRouter.
     """
     # Defensive typing since dict can be passed during tests
+    theme = state.get("theme")
     provider = state.get("provider", "openrouter")
-    model = state.get("model", "google/gemini-1.5-flash")
+    model = state.get("model", "google/gemini-flash-1.5")
     temperature = state.get("temperature", 0.7)
+
+    # Apply Theme Mapping if selected
+    if theme and theme in THEME_MAPPING:
+        mapping = THEME_MAPPING[theme]
+        provider = mapping["provider"]
+        model = mapping["model"]
+        print(f"--- [THEME APPLIED: {theme}] ---")
 
     print(f"--- [DEBUG] LLM Node Selection ---")
     print(f"Provider: {provider}")

@@ -24,7 +24,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5176",
         "http://127.0.0.1:5176",
-        "https://multi-agent-bot-web.vercel.app"
+        "https://multi-agent-bot-web.vercel.app",
+        "https://caustical-silvia-unhypothetical.ngrok-free.dev",
     ],
     allow_credentials=True,
     allow_methods=["*"],

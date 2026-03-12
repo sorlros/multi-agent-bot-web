@@ -46,6 +46,7 @@ class OrchestrationRequest(BaseModel):
     provider: str = "openrouter"
     model: str = "google/gemini-1.5-flash"
     temperature: float = 0.7
+    theme: Optional[str] = None
 
 # Create graph singleton
 graph = build_graph()
@@ -137,6 +138,7 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
             supabase.table('messages').insert(insert_data).execute()
         except Exception as e:
             print(f"Failed to insert user message into Supabase: {e}")
+
     
     initial_state = {
         "messages": history_messages,
@@ -144,7 +146,8 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
         "current_task": "Initialize task",
         "provider": request.provider,
         "model": request.model,
-        "temperature": request.temperature
+        "temperature": request.temperature,
+        "theme": request.theme
     }
     
     # Run the graph until END

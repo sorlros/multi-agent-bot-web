@@ -9,3 +9,4 @@ class AgentState(TypedDict):
     provider: str
     model: str
     temperature: float
+    theme: str

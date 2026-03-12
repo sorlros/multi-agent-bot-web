@@ -18,6 +18,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [temperature, setTemperature] = useState('0.7');
   const [isYoloMode, setIsYoloMode] = useState(true);
   const [workspaceName, setWorkspaceName] = useState('NovelAIne');
+  const [theme, setTheme] = useState('manual');
 
   // Provider-Model Mapping
   const PRVOIDER_MODELS: Record<string, {value: string, label: string}[]> = {
@@ -41,6 +42,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     ]
   };
 
+  const THEMES = [
+    { id: 'quality', label: '고성능 (Quality)', desc: 'Claude 3.5 Sonnet 기반 최고의 코드 품질', icon: '✨' },
+    { id: 'balanced', label: '밸런스 (Balanced)', desc: 'Gemini 1.5 Pro 기반 속도와 품질의 조화', icon: '⚖️' },
+    { id: 'economy', label: '절약형 (Economy)', desc: 'Gemini 1.5 Flash 기반 최고의 속도와 저가격', icon: '⚡' },
+    { id: 'manual', label: '수동 설정 (Manual)', desc: '제공자와 모델을 직접 선택합니다.', icon: '🛠️' }
+  ];
+
   // Handle Provider Change
   const handleProviderChange = (newProvider: string) => {
     setProvider(newProvider);
@@ -62,6 +70,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           setTemperature(data.temperature?.toString() || '0.7');
           setIsYoloMode(data.is_yolo_mode !== false);
           setWorkspaceName(data.workspace_name || 'NovelAIne');
+          setTheme(data.theme || 'manual');
         }
       };
       fetchSettings();
@@ -76,7 +85,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       model,
       temperature: parseFloat(temperature),
       is_yolo_mode: isYoloMode,
-      workspace_name: workspaceName
+      workspace_name: workspaceName,
+      theme: theme
     };
 
     if (existing) {
@@ -143,7 +153,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             {activeTab === 'model' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-200 mb-4">추론 엔진 (LLM Provider)</h3>
+                  <h3 className="text-sm font-semibold text-slate-200 mb-4">모델 테마 선택 (Auto Themes)</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                    {THEMES.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setTheme(t.id)}
+                        className={`flex flex-col items-start p-3 rounded-xl border transition-all ${
+                          theme === t.id 
+                            ? 'bg-blue-600/10 border-blue-500 ring-1 ring-blue-500' 
+                            : 'bg-[#0f111a] border-[#2f334d] hover:border-slate-500'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">{t.icon}</span>
+                          <span className={`text-sm font-semibold ${theme === t.id ? 'text-blue-400' : 'text-slate-200'}`}>
+                            {t.label}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 text-left line-clamp-1">{t.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className={`transition-all duration-300 ${theme !== 'manual' ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'}`}>
+                    <h3 className="text-sm font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                      추론 엔진 (LLM Provider) 
+                      {theme !== 'manual' && <span className="text-[10px] bg-blue-600/20 text-blue-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Theme Auto</span>}
+                    </h3>
                   <div className="space-y-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-slate-400">제공자 (Provider)</label>
@@ -186,6 +223,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       />
                       <p className="text-[11px] text-slate-500">값이 높을수록 응답이 창의적/변동성이 커집니다. (0.2~0.7 권장)</p>
                     </div>
+                  </div>
                   </div>
                 </div>
 
