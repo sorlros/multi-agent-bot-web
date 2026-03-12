@@ -16,6 +16,7 @@ def create_agent_node(agent_name: str, role_id: str):
     def agent_node(state: AgentState):
         llm = get_llm(state)
         llm_with_tools = llm.bind_tools(tools)
+        sys_prompt = load_skill_prompt(role_id)
         # Imperative instruction for Multi-Agent Collaboration
         sys_msg = SystemMessage(content=(
             f"{sys_prompt}\n\n"
