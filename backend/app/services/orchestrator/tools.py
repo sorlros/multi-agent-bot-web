@@ -48,3 +48,32 @@ def write_file(relative_path: str, content: str) -> str:
         return f"Successfully wrote to '{relative_path}'"
     except Exception as e:
         return f"Error writing file: {str(e)}"
+@tool
+def list_files(relative_path: str = ".") -> str:
+    """List files and directories in the user's workspace."""
+    target_path = os.path.abspath(os.path.join(WORKSPACE_ROOT, relative_path))
+    if not target_path.startswith(WORKSPACE_ROOT):
+        return f"Error: Path '{relative_path}' is outside the workspace."
+        
+    if not os.path.exists(target_path):
+        return f"Error: Path '{relative_path}' not found."
+    
+    try:
+        files = []
+        for root, dirs, filenames in os.walk(target_path):
+            # Ignore hidden dirs and typical heavy folders
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', '__pycache__', 'venv', 'dist', 'build']]
+            
+            rel_root = os.path.relpath(root, WORKSPACE_ROOT)
+            if rel_root == ".":
+                rel_root = ""
+                
+            for f in filenames:
+                if not f.startswith('.'):
+                    files.append(os.path.join(rel_root, f))
+        
+        if not files:
+            return "The workspace is empty."
+        return "\n".join(files[:100]) # Limit to first 100 files for context safety
+    except Exception as e:
+        return f"Error listing files: {str(e)}"

@@ -5,21 +5,26 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from .state import AgentState
-from .tools import read_file, write_file
+from .tools import read_file, write_file, list_files
 from .agents import get_llm, load_skill_prompt
 
 # Shared Tools
-tools = [read_file, write_file]
+tools = [read_file, write_file, list_files]
 
 def create_agent_node(agent_name: str, role_id: str):
     """Factory to create an agent node."""
     def agent_node(state: AgentState):
         llm = get_llm(state)
         llm_with_tools = llm.bind_tools(tools)
-        sys_prompt = load_skill_prompt(role_id)
-        
-        # Guide the agent to call tools if needed and explain their thought process
-        sys_msg = SystemMessage(content=f"{sys_prompt}\n\nReview the conversation and use tools to write code or update task.md.")
+        # Imperative instruction for Multi-Agent Collaboration
+        sys_msg = SystemMessage(content=(
+            f"{sys_prompt}\n\n"
+            "## CRITICAL INSTRUCTION:\n"
+            "1. 대화만 하는 '상담원'이 아닌, 실제 코드를 작성하고 작업 결과물을 만들어내는 '엔지니어'로서 행동하십시오.\n"
+            "2. 작업 지시를 받으면 반드시 `write_file` 도구를 사용하여 실제 파일을 생성하거나 수정하십시오.\n"
+            "3. 작업을 시작하기 전 `list_files`나 `read_file`로 구조를 파악하는 것을 권장합니다.\n"
+            "4. 코드 수정을 완료했다면 무엇을 수정했는지 명확히 밝히고 다음 단계(QA 등)를 제안하십시오."
+        ))
         
         # Inject the system prompt and history
         messages = [sys_msg] + list(state["messages"])
@@ -76,8 +81,13 @@ def supervisor_router(state: AgentState):
         return "tools"
         
     system_prompt = (
-        "You are a supervisor managing a conversation between: Manager, BackendDev, UIUXDesigner, FrontendDev, and QAEngineer. "
-        "Based on the conversation so far, pick the next relevant worker, or FINISH if the overall goal is fully verified and met."
+        "You are a supervisor managing a technical team: Manager, BackendDev, UIUXDesigner, FrontendDev, and QAEngineer.\n"
+        "Your goal is to ensure the user's request is ACTUALLY IMPLEMENTED in the codebase, not just discussed.\n\n"
+        "RULES:\n"
+        "1. If an agent (e.g., BackendDev) says they *will* do something but HAS NOT called a tool to do it yet, route back to them and demand the implementation.\n"
+        "2. If code has been written, route to QAEngineer for verification.\n"
+        "3. Only use 'FINISH' after you are 100% sure that all required files have been created/modified and verified.\n"
+        "4. Be strict and prioritize action (tool calls) over conversation."
     )
     
     structured_llm = llm.with_structured_output(Route)
