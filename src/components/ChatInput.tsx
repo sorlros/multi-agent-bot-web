@@ -11,12 +11,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
 
   const [isSending, setIsSending] = useState(false);
 
-  const handleSend = () => {
-    if (input.trim() && !isLoading && !isSending) {
+  const handleSend = (rawInput?: string) => {
+    const textToSend = (rawInput !== undefined ? rawInput : input).trim();
+    if (textToSend && !isLoading && !isSending) {
       setIsSending(true);
-      onSend(input.trim());
+      onSend(textToSend);
       setInput('');
-      // Reset local lock after a short delay or when isLoading prop changes
+      // Reset local lock
       setTimeout(() => setIsSending(false), 500);
     }
   };
@@ -27,7 +28,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
       if (e.nativeEvent.isComposing) return;
       
       e.preventDefault();
-      handleSend();
+      // Use currentTarget.value directly to avoid state lag in IME
+      handleSend(e.currentTarget.value);
     }
   };
 
@@ -49,8 +51,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
         </div>
 
         <button
-          onClick={handleSend}
-          disabled={!input.trim() || isLoading}
+          onClick={() => handleSend()}
+          disabled={!input.trim() || isLoading || isSending}
           className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 disabled:bg-slate-700 transition-colors shadow-lg active:scale-95 cursor-pointer"
         >
           <Send className="w-5 h-5" />
