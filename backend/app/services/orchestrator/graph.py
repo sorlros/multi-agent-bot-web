@@ -90,6 +90,41 @@ class Route(BaseModel):
         description="The next agent to route to, or FINISH if all tasks are complete."
     )
 
+def find_next_node_in_data(data):
+    """Recursively scan for next_node or agent names in a dictionary or list."""
+    if isinstance(data, dict):
+        # 1. Check for explicit keys first at this level
+        for key in ["next_node", "to", "command", "target"]:
+            if key in data and data[key] and isinstance(data[key], str):
+                target = data[key].lower()
+                if "frontend" in target: return "frontend"
+                if "backend" in target: return "backend"
+                if "ui_ux" in target: return "ui_ux"
+                if "manager" in target: return "manager"
+                if "qa" in target: return "qa"
+                if "finish" in target or "reporter" in target: return "FINISH"
+        
+        # 2. Recurse into all items
+        for val in data.values():
+            res = find_next_node_in_data(val)
+            if res: return res
+            
+    elif isinstance(data, list):
+        for item in data:
+            res = find_next_node_in_data(item)
+            if res: return res
+            
+    elif isinstance(data, str):
+        val_lower = data.lower()
+        if "frontend" in val_lower: return "frontend"
+        if "backend" in val_lower: return "backend"
+        if "ui_ux" in val_lower: return "ui_ux"
+        if "manager" in val_lower: return "manager"
+        if "qa" in val_lower: return "qa"
+        if "finish" in val_lower or "reporter" in val_lower: return "FINISH"
+        
+    return None
+
 def supervisor_router(state: AgentState):
     """Supervisor node that decides the next step."""
     llm = get_llm(state, role="supervisor")
@@ -126,39 +161,39 @@ def supervisor_router(state: AgentState):
         print(f"[SUPERVISOR] Structured output failed, attempting regex fallback: {e}")
         
         try:
-            # Manual Fallback: Handle trailing characters, markdown noise, and non-standard fields
+            # Manual Fallback: Handle multiple objects, trailing characters, and nested fields
             raw_response = llm.invoke([SystemMessage(content=system_prompt)] + trimmed_messages).content
             
-            # Find the first { and the last } to isolate the pure JSON block
-            start_idx = raw_response.find('{')
-            end_idx = raw_response.rfind('}')
+            # Find all { ... } patterns. We use a non-greedy catch to find individual blocks.
+            # Then we'll try to expand them if they are nested.
+            potential_blocks = re.findall(r'\{.*\}', raw_response, re.DOTALL)
             
-            if start_idx != -1 and end_idx != -1:
-                json_str = raw_response[start_idx:end_idx + 1]
-                data = json.loads(json_str)
-                
-                # Priority 1: Check standard/contracted keys
-                next_node = data.get("next_node") or data.get("to") or data.get("command")
-                
-                # Priority 2: Intelligent scanning of all values if standard keys are missing (DeepSeek fallback)
-                if not next_node:
-                    for val in data.values():
-                        if isinstance(val, str):
-                            val_lower = val.lower()
-                            if "frontend" in val_lower: next_node = "frontend"; break
-                            if "backend" in val_lower: next_node = "backend"; break
-                            if "ui_ux" in val_lower: next_node = "ui_ux"; break
-                            if "manager" in val_lower: next_node = "manager"; break
-                            if "qa" in val_lower: next_node = "qa"; break
-                            if "finish" in val_lower or "reporter" in val_lower: next_node = "FINISH"; break
-                
-                valid_nodes = ["manager", "backend", "ui_ux", "frontend", "qa"]
-                if next_node == "FINISH":
-                    return "reporter"
-                if next_node in valid_nodes:
-                    return next_node
-                    
-            raise ValueError(f"No valid node found in response: {raw_response[:100]}...")
+            if not potential_blocks:
+                # If no {} found, look for keyword strings directly
+                start_idx = raw_response.find('{')
+                end_idx = raw_response.rfind('}')
+                if start_idx != -1 and end_idx != -1:
+                    potential_blocks = [raw_response[start_idx:end_idx+1]]
+
+            for block in potential_blocks:
+                try:
+                    data = json.loads(block)
+                    next_node = find_next_node_in_data(data)
+                    if next_node:
+                        if next_node == "FINISH": return "reporter"
+                        return next_node
+                except:
+                    continue
+            
+            # Last Resort: Keyword scan in raw text
+            text_lower = raw_response.lower()
+            if "frontend" in text_lower: return "frontend"
+            if "backend" in text_lower: return "backend"
+            if "ui_ux" in text_lower: return "ui_ux"
+            if "manager" in text_lower: return "manager"
+            if "qa" in text_lower: return "qa"
+            
+            raise ValueError("No valid routing signal found in response text.")
             
         except Exception as fallback_e:
             print(f"[SUPERVISOR CRITICAL ERROR] All parsing failed: {fallback_e}. Falling back to reporter.")
