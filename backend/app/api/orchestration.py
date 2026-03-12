@@ -5,6 +5,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from app.services.orchestrator.graph import build_graph
 from supabase import create_client, Client
+from datetime import datetime
 import os
 
 router = APIRouter(prefix="/orchestration", tags=["Orchestration"])
@@ -57,6 +58,10 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
     Trigger the autonomous multi-agent pipeline from user prompt.
     The orchestrator internally processes tasks using Manager, BackendDev, etc.
     """
+    start_time = datetime.now()
+    print(f"\n[{start_time.strftime('%H:%M:%S')}] >>> NEW REQUEST RECEIVED <<<")
+    print(f"Task ID: {request.task_id}, Theme: {request.theme}, Model: {request.model}")
+
     from app.services.orchestrator.tools import set_workspace_root
     set_workspace_root(request.workspace_name)
     
@@ -69,22 +74,23 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
     history_messages = []
     
     if request.task_id and supabase:
-        # Fetch task summary to prepend if it exists
+        # Fetch task summary
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [1/5] Fetching task summary...")
         try:
             task_resp = supabase.table('tasks').select('summary').eq('id', request.task_id).execute()
             if task_resp.data and task_resp.data[0].get('summary'):
                 task_summary = task_resp.data[0]['summary']
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Summary found ({len(task_summary)} chars)")
         except Exception as e:
             print(f"Failed to fetch task summary: {e}")
             
         recent_contents = []
         
-        # 1. Fetch Recent History from Supabase (Fetch first to deduplicate RAG later)
+        # 1. Fetch Recent History
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [2/5] Fetching recent history (limit 20)...")
         try:
-            # Limit to last 20 messages to prevent context window explosion
             response = supabase.table('messages').select('*').eq('task_id', request.task_id).order('created_at', desc=True).limit(20).execute()
             if response.data:
-                # Reverse to get chronological order [oldest ... newest]
                 past_msgs = list(reversed(response.data))
                 recent_contents = [m['content'] for m in past_msgs]
                 for msg in past_msgs:
@@ -92,38 +98,43 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
                         history_messages.append(HumanMessage(content=msg['content']))
                     elif msg['role'] == 'agent':
                         history_messages.append(AIMessage(content=msg['content']))
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] History found: {len(history_messages)} messages")
         except Exception as e:
             print(f"Failed to fetch history for task {request.task_id}: {e}")
 
-        # 2. Fetch RAG messages similar to user's new message
+        # 2. Fetch RAG
         if embeddings_model:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [3/5] Starting RAG matching (Embedding + RPC)...")
             try:
+                # This might take time
+                embed_start = datetime.now()
                 query_embedding = embeddings_model.embed_query(request.message)
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Embedding generated in {(datetime.now() - embed_start).total_seconds():.2f}s")
+                
                 rag_resp = supabase.rpc(
                     'match_messages',
                     {
                         'query_embedding': query_embedding,
                         'match_threshold': 0.6,
-                        'match_count': 3, # Slightly more to allow filtering
+                        'match_count': 3,
                         'p_task_id': request.task_id
                     }
                 ).execute()
                 
                 if rag_resp.data:
-                    # Deduplicate: only include if not in the recent 20 messages
                     initial_count = len(rag_resp.data)
                     unique_rag = [
                         f"[{m['role']}]: {m['content']}" 
                         for m in rag_resp.data 
                         if m['content'] != request.message and m['content'] not in recent_contents
                     ]
-                    print(f"--- [DEDUPLICATION] RAG: {initial_count} -> {len(unique_rag)} unique messages ---")
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] RAG DEDUPLICATION: {initial_count} -> {len(unique_rag)} unique messages")
                     if unique_rag:
                         rag_messages_text = "\n\n".join(unique_rag)
             except Exception as e:
                 print(f"Failed to fetch RAG matching messages: {e}")
         
-        # 3. Inject Context into SystemMessage (Summary + filtered RAG)
+        # 3. Inject Context
         context_injection = ""
         if task_summary:
             context_injection += f"[[Previous Conversation Summary]]\n{task_summary}\n\n"
@@ -131,28 +142,23 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
             context_injection += f"[[Relevant Past Fragments from memory]]\n{rag_messages_text}\n\n"
             
         if context_injection:
-            # Final history_messages is [System(Summary+RAG)] + [Past Messages]
             history_messages.insert(0, SystemMessage(content=context_injection))
             
     # 2. Append the current user message
     history_messages.append(HumanMessage(content=request.message))
     
-    # 3. Insert user message with embedding to Supabase
+    # 3. Insert user message to Supabase
     if request.task_id and supabase:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [4/5] Inserting user message to Supabase...")
         try:
             user_embedding = embeddings_model.embed_query(request.message) if embeddings_model else None
-            insert_data = {
-                'task_id': request.task_id,
-                'role': 'user',
-                'content': request.message
-            }
+            insert_data = {'task_id': request.task_id, 'role': 'user', 'content': request.message}
             if user_embedding:
                 insert_data['embedding'] = user_embedding
             supabase.table('messages').insert(insert_data).execute()
         except Exception as e:
             print(f"Failed to insert user message into Supabase: {e}")
 
-    
     initial_state = {
         "messages": history_messages,
         "sender": "user",
@@ -163,28 +169,29 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
         "theme": request.theme
     }
     
-    # Run the graph until END
+    # Run the graph
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] [5/5] Invoking LangGraph pipeline...")
+    graph_start = datetime.now()
     final_state = graph.invoke(initial_state)
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Graph completed in {(datetime.now() - graph_start).total_seconds():.2f}s")
     
     result = final_state["messages"][-1].content if final_state["messages"] else "No response generated."
     
-    # 4. Insert agent message with embedding to Supabase
+    # 4. Insert agent message
     if request.task_id and supabase and final_state["messages"]:
         try:
             agent_embedding = embeddings_model.embed_query(result) if embeddings_model else None
-            insert_data = {
-                'task_id': request.task_id,
-                'role': 'agent',
-                'content': result
-            }
+            insert_data = {'task_id': request.task_id, 'role': 'agent', 'content': result}
             if agent_embedding:
                 insert_data['embedding'] = agent_embedding
             supabase.table('messages').insert(insert_data).execute()
         except Exception as e:
             print(f"Failed to insert agent message into Supabase: {e}")
             
-    # 5. Background Task: Summarize history
+    # 5. Background Task
     if request.task_id and supabase:
         background_tasks.add_task(summarize_task_history, request.task_id, history_messages + [AIMessage(content=result)], supabase)
     
+    end_time = datetime.now()
+    print(f"[{end_time.strftime('%H:%M:%S')}] <<< REQUEST COMPLETED in {(end_time - start_time).total_seconds():.2f}s >>>\n")
     return {"success": True, "result": result}
