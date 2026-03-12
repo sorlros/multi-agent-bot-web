@@ -19,19 +19,32 @@ def create_agent_node(agent_name: str, role_id: str):
         llm = get_llm(state, role=role_id)
         llm_with_tools = llm.bind_tools(tools)
         sys_prompt = load_skill_prompt(role_id)
-        # Imperative instruction for Multi-Agent Collaboration
-        sys_msg = SystemMessage(content=(
+        
+        # Combine persona with hyper-strict behavioral directives at the very end
+        sys_msg_content = (
             f"{sys_prompt}\n\n"
-            "## CRITICAL INSTRUCTION (ACTION OVER WORDS):\n"
-            "1. 절대 대화로만 답하지 마십시오. 당신은 실제 파일을 수정하는 '엔지니어'입니다.\n"
-            "2. **모든 답변은 반드시 한국어로 작성하십시오.** (CRITICAL: Respond ONLY in Korean)\n"
-            "3. 코드 수정이나 파일 생성이 필요하면 반드시 `write_file` 도구를 사용하십시오.\n"
-            "4. 작업을 완료했다면 반드시 무엇을 수정했는지 명확한 파일 경로와 함께 요약하고, 다음 필요한 단계를 제안하십시오.\n"
-            "5. 도구 사용 결과 `Error`가 반환되면, 포기하지 말고 에러 메시지를 분석하여 즉시 수정한 후 다시 도구를 호출하십시오."
-        ))
+            "---"
+            "## 🚨 최우선 행동 지침 (SUPER CRITICAL):\n"
+            "1. **언어 고정**: 이전 대화나 컨텍스트의 언어에 상관없이, 당신의 모든 답변은 반드시 100% 한국어로만 작성하십시오.\n"
+            "2. **말보다 행동**: 코드 수정이나 파일 생성이 필요하면 주저하지 말고 `write_file` 도구를 사용하십시오. .md 파일만 만드는 것은 계획일 뿐, '구현'이 아닙니다.\n"
+            "3. **엔지니어 마인드**: 당신은 기획자가 아닌 실제 코드를 수정하는 엔지니어입니다. 설명은 최소화하고 결과물(Code)로 증명하십시오.\n"
+            "4. **도구 호출 필수**: 코드를 고쳤다고 말만 하지 말고, 반드시 `write_file`을 호출하여 로컬 파일에 반영하십시오.\n"
+            "5. **에러 핸들링**: 도구 호출 시 에러가 나면 이유를 분석하여 즉시 수정된 내용으로 다시 호출하십시오."
+        )
+        sys_msg = SystemMessage(content=sys_msg_content)
         
         # Inject the system prompt and history
+        # Some models follow instructions better when they see them last or in a very strong system message
         messages = [sys_msg] + list(state["messages"])
+        
+        # FINAL REMINDER: Ensure the model sees the language and implementation rules last
+        instruction_reminder = SystemMessage(content=(
+            "### FINAL REMINDER:\n"
+            "1. **언어**: 반드시 한국어(Korean)로만 대화하십시오.\n"
+            "2. **구현**: 계획서(.md)만 쓰고 턴을 넘기지 마십시오. 반드시 `write_file`로 실제 코드를 작성하거나 수정하십시오.\n"
+            "3. **대화 최소화**: 대화는 짧게 하고, 코드로 보여주십시오."
+        ))
+        messages.append(instruction_reminder)
         
         response = llm_with_tools.invoke(messages)
         return {"messages": [response], "sender": agent_name}
@@ -56,6 +69,8 @@ def reporter_node(state: AgentState):
         "당신은 팀의 수석 보고관(Executive Reporter)입니다.\n"
         "이 프롬프트를 보낸 사용자는 당신과 개발팀(Manager, BackendDev, FrontendDev 등)의 최고 상사(Boss)입니다.\n"
         "지금까지 팀원들(에이전트들)이 나눈 대화를 종합하여, 상사에게 최종 보고를 올리세요.\n\n"
+        "### 🚨 핵심 언어 규칙:\n"
+        "**이전 대화 기록에 어떤 언어(일본어, 영어, 중국어 등)가 섞여 있더라도, 당신은 반드시 모든 내용을 정교한 한국어로 번역 및 요약하여 보고해야 합니다.**\n\n"
         "### 📝 보고서 작성 가이드 (반드시 마크다운 형식을 따름):\n"
         "1. **매우 정중한 한국어 존댓말(다나까체)**을 사용할 것.\n"
         "2. 도입부는 상사에게 올리는 결재 서류처럼 인사말과 함께 시작할 것 (예: '보고 드립니다. 작업을 성공적으로 마쳤습니다.')\n"
@@ -90,7 +105,8 @@ def supervisor_router(state: AgentState):
         "1. NO TOOL, NO FINISH: 만약 에이전트가 코드를 수정했다고 말만 하고 `write_file` 도구를 사용한 기록이 없다면, 즉시 해당 에이전트에게 다시 보내 '도구를 사용하여 실제 파일을 수정하라'고 강력하게 명령하십시오.\n"
         "2. VERIFY ACTION: 코드가 작성되었다고 판단되면 반드시 QAEngineer로 보내 검증하십시오.\n"
         "3. LOGICAL PROGRESSION: 프로젝트 요구사항이 완전히 충족될 때까지 manager, backend, ui_ux, frontend 사이를 유기적으로 회전시키십시오.\n"
-        "4. ABSOLUTE PATHS: 에이전트가 파일을 다룰 때 워크스페이스 루트 기준의 올바른 상대 경로를 사용하고 있는지 감시하십시오.\n\n"
+        "4. ABSOLUTE PATHS: 에이전트가 파일을 다룰 때 워크스페이스 루트 기준의 올바른 상대 경로를 사용하고 있는지 감시하십시오.\n"
+        "5. LANGUAGE ENFORCEMENT: All agents MUST speak Korean. If an agent speaks a different language, send them back with a strict reminder to use Korean only.\n\n"
         "OUTPUT FORMAT: You MUST answer ONLY in a single JSON block. No conversational filler, no 'Okay', no markdown outside the JSON."
     )
     
