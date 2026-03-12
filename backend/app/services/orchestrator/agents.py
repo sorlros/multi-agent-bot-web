@@ -6,7 +6,7 @@ THEME_MAPPING = {
     "quality": {"provider": "openrouter", "model": "anthropic/claude-3.5-sonnet"},
     "balanced": {"provider": "openrouter", "model": "google/gemini-2.0-pro-exp-02-05"},
     "economy": {"provider": "openrouter", "model": "google/gemini-2.0-flash"},
-    "deepseek": {"provider": "openrouter", "model": "deepseek/deepseek-chat"}, # Default for theme (V3)
+    "deepseek": {"provider": "openrouter", "model": "deepseek/deepseek-chat-v3.1"}, # Default for theme (V3.1)
 }
 
 # Role-based grade mapping (for Asymmetric Modeling)
@@ -58,9 +58,9 @@ def get_llm(state: dict, role: str = None):
             # R1 for reasoning-heavy roles
             if role in ["product_manager", "supervisor"]:
                 model = "deepseek/deepseek-r1"
-            # V3 for coding/reporting roles
+            # V3.1 for coding/reporting roles (Cheaper & Faster than V3)
             else:
-                model = "deepseek/deepseek-chat"
+                model = "deepseek/deepseek-chat-v3.1"
 
     # Debug log to verify model assignment (Optional)
     # print(f"--- [LLM Assignment] Role: {role} | Theme: {theme} -> Model: {model} ---")
