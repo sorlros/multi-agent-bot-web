@@ -20,7 +20,12 @@ def set_workspace_root(workspace_name: str):
 @tool
 def read_file(relative_path: str) -> str:
     """Read a file from the user's workspace."""
-    target_path = os.path.abspath(os.path.join(WORKSPACE_ROOT, relative_path))
+    # Robust path handling: strip workspace root if agent accidentally includes it
+    clean_path = relative_path
+    if clean_path.startswith(WORKSPACE_ROOT):
+        clean_path = os.path.relpath(clean_path, WORKSPACE_ROOT)
+    
+    target_path = os.path.abspath(os.path.join(WORKSPACE_ROOT, clean_path))
     # Security: ensure target_path is within WORKSPACE_ROOT
     if not target_path.startswith(WORKSPACE_ROOT):
         return f"Error: Path '{relative_path}' is outside the workspace."
@@ -36,7 +41,12 @@ def read_file(relative_path: str) -> str:
 @tool
 def write_file(relative_path: str, content: str) -> str:
     """Write or overwrite a file in the user's workspace."""
-    target_path = os.path.abspath(os.path.join(WORKSPACE_ROOT, relative_path))
+    # Robust path handling
+    clean_path = relative_path
+    if clean_path.startswith(WORKSPACE_ROOT):
+        clean_path = os.path.relpath(clean_path, WORKSPACE_ROOT)
+        
+    target_path = os.path.abspath(os.path.join(WORKSPACE_ROOT, clean_path))
     # Security: ensure target_path is within WORKSPACE_ROOT
     if not target_path.startswith(WORKSPACE_ROOT):
         return f"Error: Path '{relative_path}' is outside the workspace."
@@ -51,7 +61,12 @@ def write_file(relative_path: str, content: str) -> str:
 @tool
 def list_files(relative_path: str = ".") -> str:
     """List files and directories in the user's workspace."""
-    target_path = os.path.abspath(os.path.join(WORKSPACE_ROOT, relative_path))
+    # Robust path handling
+    clean_path = relative_path
+    if clean_path.startswith(WORKSPACE_ROOT):
+        clean_path = os.path.relpath(clean_path, WORKSPACE_ROOT)
+        
+    target_path = os.path.abspath(os.path.join(WORKSPACE_ROOT, clean_path))
     if not target_path.startswith(WORKSPACE_ROOT):
         return f"Error: Path '{relative_path}' is outside the workspace."
         

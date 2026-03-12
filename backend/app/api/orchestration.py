@@ -79,6 +79,8 @@ async def execute_agent_workflow(
         final_messages = []
         
         # Use astream for better async handling of steps
+        # Small delay to ensure frontend realtime subscription is ready
+        await asyncio.sleep(0.5)
         async for chunk in graph.astream(initial_state, stream_mode="updates"):
             for node_name, update in chunk.items():
                 if "messages" in update:

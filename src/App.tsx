@@ -63,8 +63,19 @@ function App() {
           }
         }
       )
-      .subscribe((status) => {
-        console.log("Supabase Realtime Status:", status);
+      .subscribe(async (status) => {
+        console.log(`Supabase Realtime Status for ${activeTaskId}:`, status);
+        if (status === 'SUBSCRIBED') {
+          // Once subscribed, fetch the latest messages one more time to catch anything missed during the handshake
+          const { data } = await supabase.from('messages').select('*').eq('task_id', activeTaskId).order('created_at', { ascending: true });
+          if (data) {
+            const chatMsgs = data.filter((m: any) => m.role !== 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
+            const progressSteps = data.filter((m: any) => m.role === 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
+            
+            setMessages(chatMsgs);
+            setSteps(progressSteps);
+          }
+        }
       });
 
     return () => {
