@@ -14,7 +14,7 @@ tools = [read_file, write_file, list_files]
 def create_agent_node(agent_name: str, role_id: str):
     """Factory to create an agent node."""
     def agent_node(state: AgentState):
-        llm = get_llm(state)
+        llm = get_llm(state, role=role_id)
         llm_with_tools = llm.bind_tools(tools)
         sys_prompt = load_skill_prompt(role_id)
         # Imperative instruction for Multi-Agent Collaboration
@@ -43,7 +43,7 @@ qa_node = create_agent_node("QAEngineer", "qa_engineer")
 
 def reporter_node(state: AgentState):
     """The final reporter node that summarizes the work done by the agents."""
-    llm = get_llm(state)
+    llm = get_llm(state, role="reporter")
     
     # Trim history to the last 40 messages to avoid context overflow and provide a concise summary
     all_messages = list(state["messages"])
@@ -74,7 +74,7 @@ class Route(BaseModel):
 
 def supervisor_router(state: AgentState):
     """Supervisor node that decides the next step."""
-    llm = get_llm(state)
+    llm = get_llm(state, role="supervisor")
     messages = state["messages"]
     last_msg = messages[-1]
     

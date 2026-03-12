@@ -4,31 +4,47 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 THEME_MAPPING = {
     "quality": {"provider": "openrouter", "model": "anthropic/claude-3.5-sonnet"},
-    "balanced": {"provider": "openrouter", "model": "google/gemini-2.5-pro"},
-    "economy": {"provider": "openrouter", "model": "google/gemini-2.5-flash"},
+    "balanced": {"provider": "openrouter", "model": "google/gemini-2.0-pro-exp-02-05"},
+    "economy": {"provider": "openrouter", "model": "google/gemini-2.0-flash"},
 }
 
-def get_llm(state: dict):
+# Role-based grade mapping (for Asymmetric Modeling)
+# 1: Economy, 2: Balanced, 3: Quality
+ROLE_GRADE = {
+    "product_manager": "balanced",
+    "backend_dev": "quality",
+    "frontend_dev": "quality",
+    "ui_ux_designer": "quality",
+    "qa_engineer": "quality",
+    "supervisor": "economy",
+    "reporter": "economy",
+}
+
+def get_llm(state: dict, role: str = None):
     """
-    Initialize LLM dynamically based on the state payload from the frontend.
-    Supports direct OpenAI, direct Google, or fallback to OpenRouter.
+    Initialize LLM dynamically based on the state and role.
+    Implements Asymmetric Modeling to optimize cost/performance.
     """
-    # Defensive typing since dict can be passed during tests
     theme = state.get("theme")
     provider = state.get("provider", "openrouter")
-    model = state.get("model", "google/gemini-flash-1.5")
+    model = state.get("model", "google/gemini-2.0-flash")
     temperature = state.get("temperature", 0.7)
 
-    # Apply Theme Mapping if selected
-    if theme and theme in THEME_MAPPING:
+    # 1. Apply Asymmetric Modeling if a role is provided
+    # This overrides the global theme for efficiency
+    if role and role in ROLE_GRADE:
+        target_grade = ROLE_GRADE[role]
+        mapping = THEME_MAPPING[target_grade]
+        provider = mapping["provider"]
+        model = mapping["model"]
+    # 2. Otherwise apply global Theme Mapping
+    elif theme and theme in THEME_MAPPING:
         mapping = THEME_MAPPING[theme]
         provider = mapping["provider"]
         model = mapping["model"]
 
-    # print(f"--- [DEBUG] LLM Node Selection ---")
-    # print(f"Provider: {provider}")
-    # print(f"Model   : {model}")
-    # print(f"---------------------------------")
+    # Debug log to verify model assignment
+    # print(f"--- [LLM Assignment] Role: {role} | Model: {model} ---")
 
     if provider == "openai":
         return ChatOpenAI(
@@ -43,7 +59,7 @@ def get_llm(state: dict):
             temperature=temperature,
         )
     else:
-        # Fallback to OpenRouter (Uses ChatOpenAI because API formats match)
+        # Fallback to OpenRouter
         or_model = model
         if "/" not in or_model:
             if "gemini" in or_model:
