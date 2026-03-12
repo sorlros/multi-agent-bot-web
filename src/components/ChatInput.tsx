@@ -1,4 +1,4 @@
-import React, { useState, type KeyboardEvent } from 'react';
+import React, { useState, useRef, type KeyboardEvent } from 'react';
 import { Send, Terminal } from 'lucide-react';
 
 interface ChatInputProps {
@@ -8,15 +8,23 @@ interface ChatInputProps {
 
 const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
   const [input, setInput] = useState('');
-
   const [isSending, setIsSending] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSend = (rawInput?: string) => {
-    const textToSend = (rawInput !== undefined ? rawInput : input).trim();
+  const handleSend = () => {
+    // Always use the latest value from the DOM ref to avoid IME/State lag
+    const textToSend = (textareaRef.current?.value || '').trim();
+    
     if (textToSend && !isLoading && !isSending) {
       setIsSending(true);
       onSend(textToSend);
+      
+      // Clear both state and DOM value
       setInput('');
+      if (textareaRef.current) {
+        textareaRef.current.value = '';
+      }
+      
       // Reset local lock
       setTimeout(() => setIsSending(false), 500);
     }
@@ -28,8 +36,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
       if (e.nativeEvent.isComposing) return;
       
       e.preventDefault();
-      // Use currentTarget.value directly to avoid state lag in IME
-      handleSend(e.currentTarget.value);
+      handleSend();
     }
   };
 
@@ -37,6 +44,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
     <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#0f111a] via-[#0f111a] to-transparent pt-12 pb-4 sm:pb-6 px-2 sm:px-4">
       <div className="max-w-4xl mx-auto relative group">
         <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
