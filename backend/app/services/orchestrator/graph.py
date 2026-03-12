@@ -24,9 +24,10 @@ def create_agent_node(agent_name: str, role_id: str):
             f"{sys_prompt}\n\n"
             "## CRITICAL INSTRUCTION (ACTION OVER WORDS):\n"
             "1. 절대 대화로만 답하지 마십시오. 당신은 실제 파일을 수정하는 '엔지니어'입니다.\n"
-            "2. 코드 수정이나 파일 생성이 필요하면 반드시 `write_file` 도구를 사용하십시오.\n"
-            "3. 작업을 완료했다면 반드시 무엇을 수정했는지 명확한 파일 경로와 함께 요약하고, 다음 필요한 단계를 제안하십시오.\n"
-            "4. 도구 사용 결과 `Error`가 반환되면, 포기하지 말고 에러 메시지를 분석하여 즉시 수정한 후 다시 도구를 호출하십시오."
+            "2. **모든 답변은 반드시 한국어로 작성하십시오.** (CRITICAL: Respond ONLY in Korean)\n"
+            "3. 코드 수정이나 파일 생성이 필요하면 반드시 `write_file` 도구를 사용하십시오.\n"
+            "4. 작업을 완료했다면 반드시 무엇을 수정했는지 명확한 파일 경로와 함께 요약하고, 다음 필요한 단계를 제안하십시오.\n"
+            "5. 도구 사용 결과 `Error`가 반환되면, 포기하지 말고 에러 메시지를 분석하여 즉시 수정한 후 다시 도구를 호출하십시오."
         ))
         
         # Inject the system prompt and history
@@ -89,7 +90,8 @@ def supervisor_router(state: AgentState):
         "1. NO TOOL, NO FINISH: 만약 에이전트가 코드를 수정했다고 말만 하고 `write_file` 도구를 사용한 기록이 없다면, 즉시 해당 에이전트에게 다시 보내 '도구를 사용하여 실제 파일을 수정하라'고 강력하게 명령하십시오.\n"
         "2. VERIFY ACTION: 코드가 작성되었다고 판단되면 반드시 QAEngineer로 보내 검증하십시오.\n"
         "3. LOGICAL PROGRESSION: 프로젝트 요구사항이 완전히 충족될 때까지 manager, backend, ui_ux, frontend 사이를 유기적으로 회전시키십시오.\n"
-        "4. ABSOLUTE PATHS: 에이전트가 파일을 다룰 때 워크스페이스 루트 기준의 올바른 상대 경로를 사용하고 있는지 감시하십시오."
+        "4. ABSOLUTE PATHS: 에이전트가 파일을 다룰 때 워크스페이스 루트 기준의 올바른 상대 경로를 사용하고 있는지 감시하십시오.\n\n"
+        "OUTPUT FORMAT: You MUST answer ONLY in a single JSON block. No conversational filler, no 'Okay', no markdown outside the JSON."
     )
     
     # Trim history to the last 10 messages for the supervisor to ensure concise context and avoid response truncation
@@ -111,10 +113,13 @@ def supervisor_router(state: AgentState):
             # Manual Fallback: DeepSeek-R1 often adds trailing thoughts or markdown outside the JSON
             raw_response = llm.invoke([SystemMessage(content=system_prompt)] + trimmed_messages).content
             
-            # Extract the first { ... } block using regex
+            # Extract the first { ... } block using a more robust regex
+            # This looks for the first '{' and the last '}' in the string
             match = re.search(r"(\{.*\})", raw_response, re.DOTALL)
             if match:
                 json_str = match.group(1)
+                # Clean up any potential markdown code block markers
+                json_str = json_str.replace("```json", "").replace("```", "").strip()
                 data = json.loads(json_str)
                 next_node = data.get("next_node")
                 
