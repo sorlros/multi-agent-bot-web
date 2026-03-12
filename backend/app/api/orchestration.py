@@ -66,6 +66,7 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
         embeddings_model = GoogleGenerativeAIEmbeddings(model="text-embedding-004", google_api_key=os.environ.get("GOOGLE_API_KEY"))
 
     task_summary = ""
+    rag_messages_text = ""
     history_messages = []
     
     if request.task_id and supabase:
