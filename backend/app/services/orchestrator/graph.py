@@ -110,18 +110,19 @@ def supervisor_router(state: AgentState):
         print(f"[SUPERVISOR] Structured output failed, attempting regex fallback: {e}")
         
         try:
-            # Manual Fallback: DeepSeek-R1 often adds trailing thoughts or markdown outside the JSON
+            # Manual Fallback: Handle trailing characters, markdown noise, and non-standard fields
             raw_response = llm.invoke([SystemMessage(content=system_prompt)] + trimmed_messages).content
             
-            # Extract the first { ... } block using a more robust regex
-            # This looks for the first '{' and the last '}' in the string
-            match = re.search(r"(\{.*\})", raw_response, re.DOTALL)
-            if match:
-                json_str = match.group(1)
-                # Clean up any potential markdown code block markers
-                json_str = json_str.replace("```json", "").replace("```", "").strip()
+            # Find the first { and the last } to isolate the pure JSON block
+            start_idx = raw_response.find('{')
+            end_idx = raw_response.rfind('}')
+            
+            if start_idx != -1 and end_idx != -1:
+                json_str = raw_response[start_idx:end_idx + 1]
                 data = json.loads(json_str)
-                next_node = data.get("next_node")
+                
+                # Robust field mapping: LLMs sometimes hallucinate field names like 'to' or 'command'
+                next_node = data.get("next_node") or data.get("to") or data.get("command")
                 
                 valid_nodes = ["manager", "backend", "ui_ux", "frontend", "qa"]
                 if next_node == "FINISH":
@@ -129,7 +130,7 @@ def supervisor_router(state: AgentState):
                 if next_node in valid_nodes:
                     return next_node
                     
-            raise ValueError(f"Could not extract valid JSON from: {raw_response[:100]}...")
+            raise ValueError(f"No valid JSON block found in response: {raw_response[:100]}...")
             
         except Exception as fallback_e:
             print(f"[SUPERVISOR CRITICAL ERROR] All parsing failed: {fallback_e}. Falling back to reporter.")

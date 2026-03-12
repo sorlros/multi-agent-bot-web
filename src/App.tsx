@@ -72,8 +72,26 @@ function App() {
             const chatMsgs = data.filter((m: any) => m.role !== 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
             const progressSteps = data.filter((m: any) => m.role === 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
             
-            setMessages(chatMsgs);
-            setSteps(progressSteps);
+            setMessages((prev) => {
+              // Merge existing and new messages, maintaining order and uniqueness
+              const combined = [...prev];
+              chatMsgs.forEach(newMsg => {
+                if (!combined.some(m => m.content === newMsg.content && m.role === newMsg.role)) {
+                  combined.push(newMsg);
+                }
+              });
+              return combined;
+            });
+
+            setSteps((prev) => {
+              const combined = [...prev];
+              progressSteps.forEach(newStep => {
+                if (!combined.some(m => m.content === newStep.content)) {
+                  combined.push(newStep);
+                }
+              });
+              return combined;
+            });
           }
         }
       });
@@ -108,11 +126,9 @@ function App() {
       }
     }
     
-    const newMessages: MessageData[] = [...messages, { role: 'user', content: userText }];
-    setMessages(newMessages);
+    const userMessage: MessageData = { role: 'user', content: userText };
+    setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
-
-
 
     try {
       const { data: settings } = await supabase.from('user_settings').select('workspace_name, provider, model, temperature, theme').limit(1).maybeSingle();
@@ -144,21 +160,23 @@ function App() {
 
       // Backend returns { success: boolean, result: string }
       if (response.data && response.data.success) {
-        setMessages([...newMessages, { role: 'agent', content: response.data.result }]);
-        // Keep isLoading true: Realtime will turn it off when background work is done
+        setMessages((prev) => {
+          // Robust duplication check: if real-time already added the agent message, don't re-add
+          const alreadyHasAgent = prev.some(m => m.role === 'agent' && m.content === response.data.result);
+          if (alreadyHasAgent) return prev;
+          return [...prev, { role: 'agent', content: response.data.result }];
+        });
       } else {
         const errorMsg = response.data?.detail || "작업을 시작하지 못했습니다.";
-        setMessages([...newMessages, { role: 'agent', content: `🚨 에러: ${errorMsg}` }]);
-        setIsLoading(false); // Stop loading if start failed
+        setMessages((prev) => [...prev, { role: 'agent', content: `🚨 에러: ${errorMsg}` }]);
+        setIsLoading(false);
       }
 
     } catch (error: any) {
       console.error(error);
       const errMsg = error.response?.data?.detail || error.message || "오케스트레이션 서버와 통신할 수 없습니다.";
-      setMessages([...newMessages, { role: 'agent', content: `🚨 에러: ${errMsg}` }]);
-      setIsLoading(false); // Only stop loading on error
-    } finally {
-      // setIsLoading(false); // Removed: Realtime will handle this on success
+      setMessages((prev) => [...prev, { role: 'agent', content: `🚨 에러: ${errMsg}` }]);
+      setIsLoading(false);
     }
   };
 
