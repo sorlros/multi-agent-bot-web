@@ -21,16 +21,17 @@ async def global_exception_handler(request, exc):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins for debugging
-    allow_credentials=False, # Must be False if origins is ["*"]
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "https://multi-agent-bot-web.vercel.app",
+        "https://caustical-silvia-unhypothetical.ngrok-free.dev",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # allow_origins=[
-    #     "http://localhost:5176",
-    #     "http://127.0.0.1:5176",
-    #     "https://multi-agent-bot-web.vercel.app",
-    #     "https://caustical-silvia-unhypothetical.ngrok-free.dev",
-    # ],
 )
 
 @app.get("/")

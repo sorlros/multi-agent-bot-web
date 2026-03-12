@@ -66,7 +66,8 @@ function App() {
         theme: theme
       }, {
         headers: {
-          'X-Api-Secret': apiSecret
+          'X-Api-Secret': apiSecret,
+          'ngrok-skip-browser-warning': 'true'
         }
       });
 
