@@ -77,27 +77,45 @@ async def execute_agent_workflow(
         print(f"[{start_time.strftime('%H:%M:%S')}] [Background] Invoking LangGraph pipeline (Threaded)...")
         final_state = await asyncio.to_thread(graph.invoke, initial_state)
         
-        result = final_state["messages"][-1].content if final_state["messages"] else "No response generated."
+        # Robustly extract the final report
+        messages = final_state.get("messages", [])
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Graph finished with {len(messages)} total messages.")
         
+        result = ""
+        # Search backwards for the last non-empty AI message
+        for msg in reversed(messages):
+            if hasattr(msg, 'content') and msg.content and msg.content.strip():
+                result = msg.content
+                break
+        
+        if not result:
+            result = "에이전트가 작업을 완료했으나 상세 보고서를 생성하지 못했습니다. 생성된 파일들을 확인해 주세요."
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] WARNING: Empty content from graph. Using fallback.")
+
         # Insert agent message to Supabase (This triggers Realtime in Frontend)
-        if request.task_id and supabase and final_state["messages"]:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Inserting agent response to Supabase...")
-            agent_embedding = embeddings_model.embed_query(result) if embeddings_model else None
-            insert_data = {'task_id': request.task_id, 'role': 'agent', 'content': result}
-            if agent_embedding:
-                insert_data['embedding'] = agent_embedding
-            supabase.table('messages').insert(insert_data).execute()
-            
-            # Summarize in background if needed
-            summarize_task_history(request.task_id, history_messages + [AIMessage(content=result)], supabase)
+        if request.task_id and supabase:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Inserting agent response to Supabase (Content length: {len(result)})...")
+            try:
+                agent_embedding = embeddings_model.embed_query(result) if embeddings_model else None
+                insert_data = {'task_id': request.task_id, 'role': 'agent', 'content': result}
+                if agent_embedding:
+                    insert_data['embedding'] = agent_embedding
+                
+                resp = supabase.table('messages').insert(insert_data).execute()
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Supabase insert successful.")
+                
+                # Summarize in background if needed
+                summarize_task_history(request.task_id, messages, supabase)
+            except Exception as e:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] ERROR during Supabase insert/summary: {e}")
             
         end_time = datetime.now()
         print(f"[{end_time.strftime('%H:%M:%S')}] [Background] Workflow completed in {(end_time - start_time).total_seconds():.2f}s")
         
     except Exception as e:
-        print(f"Agent workflow failed: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] CRITICAL ERROR: {e}")
         if request.task_id and supabase:
-            error_msg = f"에이전트 작업 중 오류가 발생했습니다: {str(e)}"
+            error_msg = f"에이전트 작업 중 중대한 오류가 발생했습니다: {str(e)}"
             supabase.table('messages').insert({'task_id': request.task_id, 'role': 'agent', 'content': error_msg}).execute()
 
 @router.post("/run", dependencies=[Depends(verify_api_key)])

@@ -37,15 +37,18 @@ function App() {
         (payload) => {
           const newMessage = payload.new;
           console.log("Realtime New Message Received:", newMessage);
+          
           if (newMessage.role === 'agent') {
+            setIsLoading(false); // Stop loading immediately on any agent message
+            
             setMessages((prev) => {
               const exists = prev.some(m => m.content === newMessage.content && m.role === 'agent');
               if (!exists) {
                 return [...prev, { role: 'agent', content: newMessage.content }];
               }
+              console.log("Realtime: Duplicate message skipped in UI", newMessage.content);
               return prev;
             });
-            setIsLoading(false);
           }
         }
       )
