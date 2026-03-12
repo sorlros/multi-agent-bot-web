@@ -121,8 +121,20 @@ def supervisor_router(state: AgentState):
                 json_str = raw_response[start_idx:end_idx + 1]
                 data = json.loads(json_str)
                 
-                # Robust field mapping: LLMs sometimes hallucinate field names like 'to' or 'command'
+                # Priority 1: Check standard/contracted keys
                 next_node = data.get("next_node") or data.get("to") or data.get("command")
+                
+                # Priority 2: Intelligent scanning of all values if standard keys are missing (DeepSeek fallback)
+                if not next_node:
+                    for val in data.values():
+                        if isinstance(val, str):
+                            val_lower = val.lower()
+                            if "frontend" in val_lower: next_node = "frontend"; break
+                            if "backend" in val_lower: next_node = "backend"; break
+                            if "ui_ux" in val_lower: next_node = "ui_ux"; break
+                            if "manager" in val_lower: next_node = "manager"; break
+                            if "qa" in val_lower: next_node = "qa"; break
+                            if "finish" in val_lower or "reporter" in val_lower: next_node = "FINISH"; break
                 
                 valid_nodes = ["manager", "backend", "ui_ux", "frontend", "qa"]
                 if next_node == "FINISH":
@@ -130,7 +142,7 @@ def supervisor_router(state: AgentState):
                 if next_node in valid_nodes:
                     return next_node
                     
-            raise ValueError(f"No valid JSON block found in response: {raw_response[:100]}...")
+            raise ValueError(f"No valid node found in response: {raw_response[:100]}...")
             
         except Exception as fallback_e:
             print(f"[SUPERVISOR CRITICAL ERROR] All parsing failed: {fallback_e}. Falling back to reporter.")
