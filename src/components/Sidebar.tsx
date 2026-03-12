@@ -4,6 +4,7 @@ import { MessageSquare, Plus, Settings, X, Trash2 } from 'lucide-react';
 export interface TaskItem {
   id: string;
   title: string;
+  workspace_name?: string;
 }
 
 interface SidebarProps {
@@ -67,7 +68,14 @@ const Sidebar: React.FC<SidebarProps> = ({ tasks, onNewTask, onSelectTask, onOpe
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors group ${activeTaskId === task.id ? 'bg-[#2a2d3d] text-white' : 'text-slate-300 hover:bg-[#202336]'}`}
             >
               <MessageSquare className={`w-4 h-4 flex-shrink-0 ${activeTaskId === task.id ? 'text-blue-400' : 'text-slate-500 group-hover:text-blue-400'}`} />
-              <span className="truncate flex-1">{task.title}</span>
+              <div className="flex-1 min-w-0">
+                <p className="truncate font-medium">{task.title}</p>
+                {task.workspace_name && (
+                  <p className="text-[10px] text-slate-500 truncate mt-0.5 group-hover:text-slate-400">
+                    📂 {task.workspace_name}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

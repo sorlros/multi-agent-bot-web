@@ -82,8 +82,14 @@ function App() {
     
     // Create new task if none is active
     if (!currentTaskId) {
+      const { data: settings } = await supabase.from('user_settings').select('workspace_name').limit(1).maybeSingle();
+      const workspace_p_name = settings?.workspace_name || 'NovelAIne';
       const title = userText.length > 30 ? userText.substring(0, 30) + '...' : userText;
-      const { data } = await supabase.from('tasks').insert([{ title }]).select().single();
+      
+      const { data } = await supabase.from('tasks').insert([
+        { title, workspace_name: workspace_p_name }
+      ]).select().single();
+      
       if (data) {
         currentTaskId = data.id;
         setActiveTaskId(currentTaskId);
