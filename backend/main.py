@@ -12,7 +12,7 @@ app.add_middleware(
     # allow_origins=["*"],  <-- 지우거나 주석 처리
     allow_origins=[
         "http://localhost:5176",            # 내 맥북 테스트용
-        "https://multi-agent-bot-web.vercel.app/"  # 🚨 허락된 회원님의 Vercel 도메인만!
+        "https://multi-agent-bot-web.vercel.app"  # 슬래시(/) 제거!
     ],
     allow_credentials=True,
     allow_methods=["*"],
