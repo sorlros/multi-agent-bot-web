@@ -62,10 +62,10 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
     
     embeddings_model = None
     if os.environ.get("GOOGLE_API_KEY"):
-        embeddings_model = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=os.environ.get("GOOGLE_API_KEY"))
+        # Fixed model name for GoogleGenerativeAIEmbeddings
+        embeddings_model = GoogleGenerativeAIEmbeddings(model="text-embedding-004", google_api_key=os.environ.get("GOOGLE_API_KEY"))
 
     task_summary = ""
-    rag_messages_text = ""
     history_messages = []
     
     if request.task_id and supabase:
@@ -77,7 +77,25 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
         except Exception as e:
             print(f"Failed to fetch task summary: {e}")
             
-        # Fetch RAG messages similar to user's new message!
+        recent_contents = []
+        
+        # 1. Fetch Recent History from Supabase (Fetch first to deduplicate RAG later)
+        try:
+            # Limit to last 20 messages to prevent context window explosion
+            response = supabase.table('messages').select('*').eq('task_id', request.task_id).order('created_at', desc=True).limit(20).execute()
+            if response.data:
+                # Reverse to get chronological order [oldest ... newest]
+                past_msgs = list(reversed(response.data))
+                recent_contents = [m['content'] for m in past_msgs]
+                for msg in past_msgs:
+                    if msg['role'] == 'user':
+                        history_messages.append(HumanMessage(content=msg['content']))
+                    elif msg['role'] == 'agent':
+                        history_messages.append(AIMessage(content=msg['content']))
+        except Exception as e:
+            print(f"Failed to fetch history for task {request.task_id}: {e}")
+
+        # 2. Fetch RAG messages similar to user's new message
         if embeddings_model:
             try:
                 query_embedding = embeddings_model.embed_query(request.message)
@@ -86,17 +104,26 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
                     {
                         'query_embedding': query_embedding,
                         'match_threshold': 0.6,
-                        'match_count': 2,
+                        'match_count': 3, # Slightly more to allow filtering
                         'p_task_id': request.task_id
                     }
                 ).execute()
                 
                 if rag_resp.data:
-                    rag_messages_text = "\n\n".join([f"[{m['role']}]: {m['content']}" for m in rag_resp.data if m['content'] != request.message])
+                    # Deduplicate: only include if not in the recent 20 messages
+                    initial_count = len(rag_resp.data)
+                    unique_rag = [
+                        f"[{m['role']}]: {m['content']}" 
+                        for m in rag_resp.data 
+                        if m['content'] != request.message and m['content'] not in recent_contents
+                    ]
+                    print(f"--- [DEDUPLICATION] RAG: {initial_count} -> {len(unique_rag)} unique messages ---")
+                    if unique_rag:
+                        rag_messages_text = "\n\n".join(unique_rag)
             except Exception as e:
                 print(f"Failed to fetch RAG matching messages: {e}")
         
-        # Inject Context into SystemMessage
+        # 3. Inject Context into SystemMessage (Summary + filtered RAG)
         context_injection = ""
         if task_summary:
             context_injection += f"[[Previous Conversation Summary]]\n{task_summary}\n\n"
@@ -104,22 +131,8 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
             context_injection += f"[[Relevant Past Fragments from memory]]\n{rag_messages_text}\n\n"
             
         if context_injection:
-            history_messages.append(SystemMessage(content=context_injection))
-
-        # 1. Fetch History from Supabase
-        try:
-            # Limit to last 20 messages to prevent context window explosion
-            response = supabase.table('messages').select('*').eq('task_id', request.task_id).order('created_at', desc=True).limit(20).execute()
-            if response.data:
-                # Reverse to get chronological order [oldest ... newest]
-                past_msgs = reversed(response.data)
-                for msg in past_msgs:
-                    if msg['role'] == 'user':
-                        history_messages.append(HumanMessage(content=msg['content']))
-                    elif msg['role'] == 'agent':
-                        history_messages.append(AIMessage(content=msg['content']))
-        except Exception as e:
-            print(f"Failed to fetch history for task {request.task_id}: {e}")
+            # Final history_messages is [System(Summary+RAG)] + [Past Messages]
+            history_messages.insert(0, SystemMessage(content=context_injection))
             
     # 2. Append the current user message
     history_messages.append(HumanMessage(content=request.message))
