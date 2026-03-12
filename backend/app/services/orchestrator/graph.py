@@ -91,12 +91,20 @@ def supervisor_router(state: AgentState):
         "4. Be strict and prioritize action (tool calls) over conversation."
     )
     
-    structured_llm = llm.with_structured_output(Route)
-    result = structured_llm.invoke([SystemMessage(content=system_prompt)] + list(messages))
+    # Trim history to the last 10 messages for the supervisor to ensure concise context and avoid response truncation
+    all_messages = list(state["messages"])
+    trimmed_messages = all_messages[-10:] if len(all_messages) > 10 else all_messages
     
-    if result.next_node == "FINISH":
+    structured_llm = llm.with_structured_output(Route)
+    try:
+        result = structured_llm.invoke([SystemMessage(content=system_prompt)] + trimmed_messages)
+        
+        if result.next_node == "FINISH":
+            return "reporter"
+        return result.next_node
+    except Exception as e:
+        print(f"[SUPERVISOR ERROR] Failed to parse route: {e}. Falling back to reporter.")
         return "reporter"
-    return result.next_node
 
 def tool_edge(state: AgentState):
     """Route from tools back to the agent who called them."""

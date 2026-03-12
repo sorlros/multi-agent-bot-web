@@ -144,7 +144,23 @@ async def execute_agent_workflow(
         print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] CRITICAL ERROR: {e}")
         if request.task_id and supabase:
             error_msg = f"에이전트 작업 중 중대한 오류가 발생했습니다: {str(e)}"
-            supabase.table('messages').insert({'task_id': request.task_id, 'role': 'agent', 'content': error_msg}).execute()
+            # 1. Log as agent_step for progress UI visibility
+            try:
+                supabase.table('messages').insert({
+                    'task_id': request.task_id, 
+                    'role': 'agent_step', 
+                    'content': f"⚠️ [CRITICAL ERROR] {error_msg}"
+                }).execute()
+            except: pass
+            
+            # 2. Log as agent role to trigger UI loading state completion
+            try:
+                supabase.table('messages').insert({
+                    'task_id': request.task_id, 
+                    'role': 'agent', 
+                    'content': error_msg
+                }).execute()
+            except: pass
 
 @router.post("/run", dependencies=[Depends(verify_api_key)])
 async def run_orchestrator(request: OrchestrationRequest, background_tasks: BackgroundTasks):

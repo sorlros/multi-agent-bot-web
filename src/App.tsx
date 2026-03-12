@@ -45,6 +45,10 @@ function App() {
               if (!exists) return [...prev, { role: 'agent_step', content: newMessage.content }];
               return prev;
             });
+            // Failsafe: if a step log indicates a critical error, ensure UI is not stuck
+            if (newMessage.content.includes('ERROR') || newMessage.content.includes('실패')) {
+              setIsLoading(false);
+            }
           } else if (newMessage.role === 'agent') {
             setIsLoading(false); // Stop loading immediately on any agent message
             
