@@ -9,42 +9,51 @@ THEME_MAPPING = {
 }
 
 # Role-based grade mapping (for Asymmetric Modeling)
-# 1: Economy, 2: Balanced, 3: Quality
-ROLE_GRADE = {
+# FIXED_ROLES always use these grades regardless of the global theme to ensure efficiency.
+FIXED_ROLES = {
     "product_manager": "balanced",
-    "backend_dev": "quality",
-    "frontend_dev": "quality",
-    "ui_ux_designer": "quality",
-    "qa_engineer": "quality",
     "supervisor": "economy",
     "reporter": "economy",
 }
 
+# CODING_ROLES respect the global theme (Quality/Balanced/Economy) selected by the user.
+CODING_ROLES = ["backend_dev", "frontend_dev", "ui_ux_designer", "qa_engineer"]
+
 def get_llm(state: dict, role: str = None):
     """
     Initialize LLM dynamically based on the state and role.
-    Implements Asymmetric Modeling to optimize cost/performance.
+    Implements Asymmetric Modeling:
+    - Fixed Roles (PM, Supervisor, Reporter) use optimized tiers.
+    - Coding Roles respect the UI Theme (Quality/Balanced/Economy) or manual selection.
     """
-    theme = state.get("theme")
+    theme = state.get("theme", "manual")
     provider = state.get("provider", "openrouter")
     model = state.get("model", "google/gemini-2.0-flash")
     temperature = state.get("temperature", 0.7)
 
-    # 1. Apply Asymmetric Modeling if a role is provided
-    # This overrides the global theme for efficiency
-    if role and role in ROLE_GRADE:
-        target_grade = ROLE_GRADE[role]
+    # 1. Determine the target grade based on role and theme
+    target_grade = None
+    
+    if role in FIXED_ROLES:
+        # Fixed roles use optimized tiers
+        target_grade = FIXED_ROLES[role]
+    elif role in CODING_ROLES:
+        # Coding roles respect the theme if it's not manual
+        if theme in THEME_MAPPING:
+            target_grade = theme
+    else:
+        # Default fallback for unknown roles or no role
+        if theme in THEME_MAPPING:
+            target_grade = theme
+
+    # 2. Apply Mapping if a grade was determined
+    if target_grade:
         mapping = THEME_MAPPING[target_grade]
         provider = mapping["provider"]
         model = mapping["model"]
-    # 2. Otherwise apply global Theme Mapping
-    elif theme and theme in THEME_MAPPING:
-        mapping = THEME_MAPPING[theme]
-        provider = mapping["provider"]
-        model = mapping["model"]
 
-    # Debug log to verify model assignment
-    # print(f"--- [LLM Assignment] Role: {role} | Model: {model} ---")
+    # Debug log to verify model assignment (Optional)
+    # print(f"--- [LLM Assignment] Role: {role} | Theme: {theme} -> Model: {model} ---")
 
     if provider == "openai":
         return ChatOpenAI(

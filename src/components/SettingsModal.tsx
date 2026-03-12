@@ -44,8 +44,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   const THEMES = [
     { id: 'quality', label: '고성능 (Quality)', desc: 'Claude 3.5 Sonnet 기반 최고의 코드 품질', icon: '✨' },
-    { id: 'balanced', label: '밸런스 (Balanced)', desc: 'Gemini 1.5 Pro 기반 속도와 품질의 조화', icon: '⚖️' },
-    { id: 'economy', label: '절약형 (Economy)', desc: 'Gemini 1.5 Flash 기반 최고의 속도와 저가격', icon: '⚡' },
+    { id: 'balanced', label: '밸런스 (Balanced)', desc: 'Gemini 2.0 Pro 기반 속도와 품질의 조화', icon: '⚖️' },
+    { id: 'economy', label: '절약형 (Economy)', desc: 'Gemini 2.0 Flash 기반 최고의 속도와 저가격', icon: '⚡' },
     { id: 'manual', label: '수동 설정 (Manual)', desc: '제공자와 모델을 직접 선택합니다.', icon: '🛠️' }
   ];
 
