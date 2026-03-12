@@ -20,7 +20,7 @@ def summarize_task_history(task_id: str, messages: list, supabase: Client):
         try:
             api_key = os.environ.get("GOOGLE_API_KEY")
             if not api_key: return
-            llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=api_key)
+            llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3, google_api_key=api_key)
             chat_text = "\n".join([f"{'User' if isinstance(m, HumanMessage) else 'Agent'}: {m.content}" for m in messages if isinstance(m, (HumanMessage, AIMessage))])
             summary_prompt = f"Summarize the following chat history thoroughly but concisely in Korean (max 3 lines):\n\n{chat_text}"
             summary_response = llm.invoke(summary_prompt)
@@ -44,7 +44,7 @@ class OrchestrationRequest(BaseModel):
     task_id: Optional[str] = None
     workspace_name: str = "NovelAIne"
     provider: str = "openrouter"
-    model: str = "google/gemini-2.5-flash"
+    model: str = "google/gemini-1.5-flash"
     temperature: float = 0.7
 
 # Create graph singleton

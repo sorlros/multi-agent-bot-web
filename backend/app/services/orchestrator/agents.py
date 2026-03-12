@@ -9,7 +9,7 @@ def get_llm(state: dict):
     """
     # Defensive typing since dict can be passed during tests
     provider = state.get("provider", "openrouter")
-    model = state.get("model", "google/gemini-2.5-flash")
+    model = state.get("model", "google/gemini-1.5-flash")
     temperature = state.get("temperature", 0.7)
 
     if provider == "openai":
