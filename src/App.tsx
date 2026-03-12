@@ -73,24 +73,13 @@ function App() {
             const progressSteps = data.filter((m: any) => m.role === 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
             
             setMessages((prev) => {
-              // Merge existing and new messages, maintaining order and uniqueness
-              const combined = [...prev];
-              chatMsgs.forEach(newMsg => {
-                if (!combined.some(m => m.content === newMsg.content && m.role === newMsg.role)) {
-                  combined.push(newMsg);
-                }
-              });
-              return combined;
+              if (JSON.stringify(prev) === JSON.stringify(chatMsgs)) return prev;
+              return chatMsgs;
             });
 
             setSteps((prev) => {
-              const combined = [...prev];
-              progressSteps.forEach(newStep => {
-                if (!combined.some(m => m.content === newStep.content)) {
-                  combined.push(newStep);
-                }
-              });
-              return combined;
+              if (JSON.stringify(prev) === JSON.stringify(progressSteps)) return prev;
+              return progressSteps;
             });
           }
         }
@@ -128,6 +117,7 @@ function App() {
     
     const userMessage: MessageData = { role: 'user', content: userText };
     setMessages((prev) => [...prev, userMessage]);
+    setSteps([]); // Clear old steps for new request
     setIsLoading(true);
 
     try {
@@ -161,11 +151,49 @@ function App() {
       // Backend returns { success: boolean, result: string }
       if (response.data && response.data.success) {
         setMessages((prev) => {
-          // Robust duplication check: if real-time already added the agent message, don't re-add
           const alreadyHasAgent = prev.some(m => m.role === 'agent' && m.content === response.data.result);
           if (alreadyHasAgent) return prev;
           return [...prev, { role: 'agent', content: response.data.result }];
         });
+        
+        // Polling Fallback: Start a timer to check for updates in case Realtime fails
+        const pollInterval = setInterval(async () => {
+          if (!currentTaskId) {
+            clearInterval(pollInterval);
+            return;
+          }
+          
+          const { data: latestMsgs } = await supabase.from('messages')
+            .select('*')
+            .eq('task_id', currentTaskId)
+            .order('created_at', { ascending: true });
+            
+          if (latestMsgs) {
+            const chatMsgs = latestMsgs.filter((m: any) => m.role !== 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
+            const progressSteps = latestMsgs.filter((m: any) => m.role === 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
+            
+            setMessages((prev) => {
+              if (JSON.stringify(prev) === JSON.stringify(chatMsgs)) return prev;
+              return chatMsgs;
+            });
+            
+            setSteps((prev) => {
+              if (JSON.stringify(prev) === JSON.stringify(progressSteps)) return prev;
+              return progressSteps;
+            });
+            
+            // Check if final agent message has arrived (the real one, not the startup hint)
+            const trueAgentMsg = latestMsgs.find((m: any) => m.role === 'agent' && m.content !== response.data.result);
+            if (trueAgentMsg) {
+              setIsLoading(false);
+              clearInterval(pollInterval);
+            }
+          }
+        }, 3000); // Poll every 3 seconds
+
+        // Cleanup interval after 10 minutes max (timeout safety)
+        setTimeout(() => clearInterval(pollInterval), 600000);
+
       } else {
         const errorMsg = response.data?.detail || "작업을 시작하지 못했습니다.";
         setMessages((prev) => [...prev, { role: 'agent', content: `🚨 에러: ${errorMsg}` }]);

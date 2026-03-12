@@ -42,7 +42,7 @@ const AgentProgress: React.FC<AgentProgressProps> = ({ steps, isLoading }) => {
               </div>
               <div className="flex-1">
                 <p className="text-[13px] text-slate-300 font-mono leading-relaxed">
-                  <span className="text-blue-400 mr-2 opacity-50">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>
+                  <span className="text-blue-400 mr-2 opacity-50">LOG ›</span>
                   {step.content}
                 </p>
               </div>
