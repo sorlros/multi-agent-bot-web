@@ -36,20 +36,22 @@ function App() {
         },
         (payload) => {
           const newMessage = payload.new;
+          console.log("Realtime New Message Received:", newMessage);
           if (newMessage.role === 'agent') {
             setMessages((prev) => {
-              // Avoid duplicate messages if already manually added
               const exists = prev.some(m => m.content === newMessage.content && m.role === 'agent');
               if (!exists) {
                 return [...prev, { role: 'agent', content: newMessage.content }];
               }
               return prev;
             });
-            setIsLoading(false); // Stop loading when agent response arrives
+            setIsLoading(false);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Supabase Realtime Status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -107,11 +109,17 @@ function App() {
         }
       });
 
-      const responseText = (response.data && response.data.success) ? response.data.result : "작업 진행 중 에러가 발생했습니다.";
-      
-      setMessages([...newMessages, { role: 'agent', content: responseText }]);
-      // NOTE: isLoading is NOT set to false here. 
-      // It will be set to false when the Realtime 'agent' message arrives.
+      console.log("API Response:", response.data);
+
+      // Backend returns { success: boolean, result: string }
+      if (response.data && response.data.success) {
+        setMessages([...newMessages, { role: 'agent', content: response.data.result }]);
+        // Keep isLoading true: Realtime will turn it off when background work is done
+      } else {
+        const errorMsg = response.data?.detail || "작업을 시작하지 못했습니다.";
+        setMessages([...newMessages, { role: 'agent', content: `🚨 에러: ${errorMsg}` }]);
+        setIsLoading(false); // Stop loading if start failed
+      }
 
     } catch (error: any) {
       console.error(error);

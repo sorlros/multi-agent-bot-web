@@ -7,6 +7,7 @@ from app.services.orchestrator.graph import build_graph
 from supabase import create_client, Client
 from datetime import datetime
 import os
+import asyncio
 
 router = APIRouter(prefix="/orchestration", tags=["Orchestration"])
 
@@ -179,9 +180,9 @@ async def execute_agent_workflow(
     }
     
     try:
-        # Run the graph
-        print(f"[{start_time.strftime('%H:%M:%S')}] [Background] Invoking LangGraph pipeline...")
-        final_state = graph.invoke(initial_state)
+        # Run the graph in a separate thread to avoid blocking the event loop
+        print(f"[{start_time.strftime('%H:%M:%S')}] [Background] Invoking LangGraph pipeline (Threaded)...")
+        final_state = await asyncio.to_thread(graph.invoke, initial_state)
         
         result = final_state["messages"][-1].content if final_state["messages"] else "No response generated."
         
