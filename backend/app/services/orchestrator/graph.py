@@ -3,6 +3,8 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
+import re
+import json
 
 from .state import AgentState
 from .tools import read_file, write_file, list_files
@@ -95,16 +97,39 @@ def supervisor_router(state: AgentState):
     all_messages = list(state["messages"])
     trimmed_messages = all_messages[-10:] if len(all_messages) > 10 else all_messages
     
-    structured_llm = llm.with_structured_output(Route)
     try:
+        # Use structured output as the primary method
+        structured_llm = llm.with_structured_output(Route)
         result = structured_llm.invoke([SystemMessage(content=system_prompt)] + trimmed_messages)
         
         if result.next_node == "FINISH":
             return "reporter"
         return result.next_node
     except Exception as e:
-        print(f"[SUPERVISOR ERROR] Failed to parse route: {e}. Falling back to reporter.")
-        return "reporter"
+        print(f"[SUPERVISOR] Structured output failed, attempting regex fallback: {e}")
+        
+        try:
+            # Manual Fallback: DeepSeek-R1 often adds trailing thoughts or markdown outside the JSON
+            raw_response = llm.invoke([SystemMessage(content=system_prompt)] + trimmed_messages).content
+            
+            # Extract the first { ... } block using regex
+            match = re.search(r"(\{.*\})", raw_response, re.DOTALL)
+            if match:
+                json_str = match.group(1)
+                data = json.loads(json_str)
+                next_node = data.get("next_node")
+                
+                valid_nodes = ["manager", "backend", "ui_ux", "frontend", "qa"]
+                if next_node == "FINISH":
+                    return "reporter"
+                if next_node in valid_nodes:
+                    return next_node
+                    
+            raise ValueError(f"Could not extract valid JSON from: {raw_response[:100]}...")
+            
+        except Exception as fallback_e:
+            print(f"[SUPERVISOR CRITICAL ERROR] All parsing failed: {fallback_e}. Falling back to reporter.")
+            return "reporter"
 
 def tool_edge(state: AgentState):
     """Route from tools back to the agent who called them."""
