@@ -74,40 +74,68 @@ async def execute_agent_workflow(
     
     try:
         # Run the graph in a separate thread to avoid blocking the event loop
-        print(f"[{start_time.strftime('%H:%M:%S')}] [Background] Invoking LangGraph pipeline (Threaded)...")
-        final_state = await asyncio.to_thread(graph.invoke, initial_state)
+        print(f"[{start_time.strftime('%H:%M:%S')}] [Background] Starting LangGraph stream...")
         
-        # Robustly extract the final report
-        messages = final_state.get("messages", [])
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Graph finished with {len(messages)} total messages.")
+        final_messages = []
+        
+        # Use astream for better async handling of steps
+        async for chunk in graph.astream(initial_state, stream_mode="updates"):
+            for node_name, update in chunk.items():
+                if "messages" in update:
+                    new_msgs = update["messages"]
+                    final_messages.extend(new_msgs)
+                    
+                    # Log progress for all agents except the final reporter
+                    if node_name != "reporter" and request.task_id and supabase:
+                        last_msg = new_msgs[-1]
+                        content = f"[{node_name}] 작업을 진행 중입니다..."
+                        
+                        # If the agent wrote something meaningful (not just tool calls), use it as a hint
+                        if hasattr(last_msg, 'content') and last_msg.content:
+                            # Truncate content for the step log to keep it concise
+                            hint = last_msg.content[:100] + "..." if len(last_msg.content) > 100 else last_msg.content
+                            content = f"[{node_name}] {hint}"
+                        
+                        try:
+                            supabase.table('messages').insert({
+                                'task_id': request.task_id,
+                                'role': 'agent_step',
+                                'content': content
+                            }).execute()
+                            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Logged step: {node_name}")
+                        except Exception as e:
+                            print(f"Failed to log step {node_name}: {e}")
+
+        # Robustly extract the final report from aggregated messages
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Graph finished with {len(final_messages)} total messages.")
         
         result = ""
         # Search backwards for the last non-empty AI message
-        for msg in reversed(messages):
+        for msg in reversed(final_messages):
             if hasattr(msg, 'content') and msg.content and msg.content.strip():
+                # Avoid using a message that clearly looks like a step hint
                 result = msg.content
                 break
         
         if not result:
             result = "에이전트가 작업을 완료했으나 상세 보고서를 생성하지 못했습니다. 생성된 파일들을 확인해 주세요."
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] WARNING: Empty content from graph. Using fallback.")
 
-        # Insert agent message to Supabase (This triggers Realtime in Frontend)
+        # Insert final agent message (This triggers the main chat update)
         if request.task_id and supabase:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Inserting agent response to Supabase (Content length: {len(result)})...")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Inserting final agent response...")
             try:
                 agent_embedding = embeddings_model.embed_query(result) if embeddings_model else None
                 insert_data = {'task_id': request.task_id, 'role': 'agent', 'content': result}
                 if agent_embedding:
                     insert_data['embedding'] = agent_embedding
                 
-                resp = supabase.table('messages').insert(insert_data).execute()
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Supabase insert successful.")
+                supabase.table('messages').insert(insert_data).execute()
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] Pipeline fully complete.")
                 
-                # Summarize in background if needed
-                summarize_task_history(request.task_id, messages, supabase)
+                # Final summary update
+                summarize_task_history(request.task_id, final_messages, supabase)
             except Exception as e:
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] ERROR during Supabase insert/summary: {e}")
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] [Background] ERROR during final insert: {e}")
             
         end_time = datetime.now()
         print(f"[{end_time.strftime('%H:%M:%S')}] [Background] Workflow completed in {(end_time - start_time).total_seconds():.2f}s")

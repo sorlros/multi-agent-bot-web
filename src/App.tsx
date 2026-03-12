@@ -11,6 +11,7 @@ import axios from 'axios';
 function App() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [messages, setMessages] = useState<MessageData[]>([]);
+  const [steps, setSteps] = useState<MessageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -38,7 +39,13 @@ function App() {
           const newMessage = payload.new;
           console.log("Realtime New Message Received:", newMessage);
           
-          if (newMessage.role === 'agent') {
+          if (newMessage.role === 'agent_step') {
+            setSteps((prev) => {
+              const exists = prev.some(m => m.content === newMessage.content);
+              if (!exists) return [...prev, { role: 'agent_step', content: newMessage.content }];
+              return prev;
+            });
+          } else if (newMessage.role === 'agent') {
             setIsLoading(false); // Stop loading immediately on any agent message
             
             setMessages((prev) => {
@@ -140,7 +147,11 @@ function App() {
     setIsLoading(true);
     const { data } = await supabase.from('messages').select('*').eq('task_id', taskId).order('created_at', { ascending: true });
     if (data) {
-      setMessages(data.map((msg: any) => ({ role: msg.role, content: msg.content })));
+      const chatMsgs = data.filter((m: any) => m.role !== 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
+      const progressSteps = data.filter((m: any) => m.role === 'agent_step').map((msg: any) => ({ role: msg.role, content: msg.content }));
+      
+      setMessages(chatMsgs);
+      setSteps(progressSteps);
     }
     setIsLoading(false);
   };
@@ -148,6 +159,7 @@ function App() {
   const handleNewTask = () => {
     setActiveTaskId(null);
     setMessages([]);
+    setSteps([]);
     setIsMobileSidebarOpen(false); // Close sidebar on mobile after new task
   };
 
@@ -187,7 +199,7 @@ function App() {
           />
         }
       >
-        <ChatArea messages={messages} isLoading={isLoading} />
+        <ChatArea messages={messages} isLoading={isLoading} steps={steps} />
         <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
       </Layout>
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />

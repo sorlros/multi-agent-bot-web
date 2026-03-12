@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 export interface MessageData {
-  role: 'user' | 'agent';
+  role: 'user' | 'agent' | 'agent_step';
   content: string;
 }
 
