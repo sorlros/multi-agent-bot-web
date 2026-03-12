@@ -12,6 +12,11 @@ def get_llm(state: dict):
     model = state.get("model", "google/gemini-1.5-flash")
     temperature = state.get("temperature", 0.7)
 
+    print(f"--- [DEBUG] LLM Node Selection ---")
+    print(f"Provider: {provider}")
+    print(f"Model   : {model}")
+    print(f"---------------------------------")
+
     if provider == "openai":
         return ChatOpenAI(
             api_key=os.environ.get("OPENAI_API_KEY", ""),
