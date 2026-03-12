@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from app.services.orchestrator.graph import build_graph
 from supabase import create_client, Client
 import os
@@ -20,7 +20,7 @@ def summarize_task_history(task_id: str, messages: list, supabase: Client):
         try:
             api_key = os.environ.get("GOOGLE_API_KEY")
             if not api_key: return
-            llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3, google_api_key=api_key)
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3, api_key=os.environ.get("OPENAI_API_KEY"))
             chat_text = "\n".join([f"{'User' if isinstance(m, HumanMessage) else 'Agent'}: {m.content}" for m in messages if isinstance(m, (HumanMessage, AIMessage))])
             summary_prompt = f"Summarize the following chat history thoroughly but concisely in Korean (max 3 lines):\n\n{chat_text}"
             summary_response = llm.invoke(summary_prompt)
@@ -61,9 +61,8 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
     set_workspace_root(request.workspace_name)
     
     embeddings_model = None
-    if os.environ.get("GOOGLE_API_KEY"):
-        # Fixed model name for GoogleGenerativeAIEmbeddings
-        embeddings_model = GoogleGenerativeAIEmbeddings(model="text-embedding-004", google_api_key=os.environ.get("GOOGLE_API_KEY"))
+    if os.environ.get("OPENAI_API_KEY"):
+        embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small", api_key=os.environ.get("OPENAI_API_KEY"))
 
     task_summary = ""
     rag_messages_text = ""
