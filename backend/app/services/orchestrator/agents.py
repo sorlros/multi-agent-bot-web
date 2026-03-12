@@ -24,12 +24,11 @@ def get_llm(state: dict):
         mapping = THEME_MAPPING[theme]
         provider = mapping["provider"]
         model = mapping["model"]
-        print(f"--- [THEME APPLIED: {theme}] ---")
 
-    print(f"--- [DEBUG] LLM Node Selection ---")
-    print(f"Provider: {provider}")
-    print(f"Model   : {model}")
-    print(f"---------------------------------")
+    # print(f"--- [DEBUG] LLM Node Selection ---")
+    # print(f"Provider: {provider}")
+    # print(f"Model   : {model}")
+    # print(f"---------------------------------")
 
     if provider == "openai":
         return ChatOpenAI(

@@ -67,7 +67,8 @@ async def run_orchestrator(request: OrchestrationRequest, background_tasks: Back
     
     embeddings_model = None
     if os.environ.get("OPENAI_API_KEY"):
-        embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small", api_key=os.environ.get("OPENAI_API_KEY"))
+        # Match Supabase vector(768) dimension
+        embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small", dimensions=768, api_key=os.environ.get("OPENAI_API_KEY"))
 
     task_summary = ""
     rag_messages_text = ""
